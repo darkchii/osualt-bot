@@ -81,6 +81,18 @@ class Completion(commands.Cog):
         kwargs = get_args(args)
         await get_completion(ctx, "objects", kwargs)
 
+    @commands.command(aliases=["artistc"])
+    async def artist_completion(self, ctx, *args):
+        """Artist completion board for a single user"""
+        kwargs = get_args(args)
+        await get_completion(ctx, "artist", kwargs)
+
+    @commands.command(aliases=["titlec"])
+    async def title_completion(self, ctx, *args):
+        """Title completion board for a single user"""
+        kwargs = get_args(args)
+        await get_completion(ctx, "title", kwargs)
+
     @commands.command(aliases=["packs_completion", "pac"])
     async def pack_completion(self, ctx, *args):
         """Pack completion board for a single user"""

@@ -1203,6 +1203,16 @@ async def get_completion(ctx, type, di):
         title = "Grade Completion"
         range_arg = "-letters"
         prefix = ""
+    elif type == "artist":
+        title = "Artist Completion"
+        ranges = ['null', "A%", "B%", "C%", "D%", "E%", "F%", "G%", "H%", "I%", "J%", "K%", "L%", "M%", "N%", "O%", "P%", "Q%", "R%", "S%", "T%", "U%", "V%", "W%", "X%", "Y%", "Z%"]
+        range_arg = "artist"
+        prefix = ""
+    elif type == "title":
+        title = "Title Completion"
+        ranges = ['null', "A%", "B%", "C%", "D%", "E%", "F%", "G%", "H%", "I%", "J%", "K%", "L%", "M%", "N%", "O%", "P%", "Q%", "R%", "S%", "T%", "U%", "V%", "W%", "X%", "Y%", "Z%"]
+        range_arg = "title"
+        prefix = ""
     elif type == "grade_breakdown":
         if "-modded" in di:
             del di["-modded"]
@@ -1289,6 +1299,8 @@ async def get_completion(ctx, type, di):
         for rng in ranges:
             if type in ("yearly", "monthly", "daily"):
                 range_conditions.append(f"WHEN {range_arg} = {rng} THEN '{rng}'")
+            elif type in ("artist", "title"):
+                range_conditions.append( f"WHEN {range_arg} ILIKE '{rng}' THEN '{rng}'" )
             else:
                 start, end = str(rng).split("-")
                 range_conditions.append(
@@ -1338,6 +1350,8 @@ async def get_completion(ctx, type, di):
         completion = 100
         di[range_arg] = str(rng).lower()
         if type not in ("grade", "grade_breakdown"):
+            if rng == "null":
+                rng = "None"
             beatmap_count = range_data.get(str(rng), {"beatmap_count": 0})[
                 "beatmap_count"
             ]
@@ -1371,6 +1385,11 @@ async def get_completion(ctx, type, di):
             end_time = f"{end_minutes:02d}:{end_seconds:02d}"
 
             rng = f"{start_time}-{end_time}"
+        elif type == "artist" or type == "title":
+            rng = rng.replace("%", "")
+            # replace "[A-Za-z]%" with a hashtag
+            if rng == "None":
+                rng = "#"
         elif not type == "stars" and rng == "10-11":
             rng = "10+"
         elif type == "stars":
