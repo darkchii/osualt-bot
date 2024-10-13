@@ -56,6 +56,12 @@ class Completion(commands.Cog):
         """Grade Breakdown board for a single user"""
         kwargs = get_args(args)
         await get_completion(ctx, "grade_breakdown", kwargs)
+    
+    @commands.command()
+    async def mod_breakdown(self, ctx, *args):
+        """Mod Breakdown board for a single user"""
+        kwargs = get_args(args)
+        await get_completion(ctx, "mod_breakdown", kwargs)
 
     @commands.command(aliases=["yc"])
     async def yearly_completion(self, ctx, *args):

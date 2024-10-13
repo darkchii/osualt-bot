@@ -1223,6 +1223,14 @@ async def get_completion(ctx, type, di):
         title = "Grade Breakdown"
         range_arg = "-letters"
         prefix = ""
+    elif type == "mod_breakdown":
+        beatmap_count = await get_beatmap_list(
+            ctx, di, ["scores", "mods"], False, None, False, True
+        )
+        # works a bit differently (we need to find the unique mods_enabled values, then count them and show the top x)
+        title = "Mod Breakdown"
+        range_arg = "enabled_mods"
+        prefix = ""
     elif type == "yearly":
         ranges = range(2007, datetime.datetime.now().year + 1)
         title = "Yearly Completion"
@@ -1279,7 +1287,7 @@ async def get_completion(ctx, type, di):
 
     query_start_time = time.time()
 
-    if type not in ("grade", "grade_breakdown"):
+    if type not in ("grade", "grade_breakdown", "mod_breakdown"):
         beatmap_di = di.copy()
         for key in di.keys():
             if key in blacklist:
@@ -1346,79 +1354,111 @@ async def get_completion(ctx, type, di):
         print(range_data)
 
     description = "```pascal\n"
-    for rng in ranges:
-        completion = 100
-        di[range_arg] = str(rng).lower()
-        if type not in ("grade", "grade_breakdown"):
-            if rng == "null":
-                rng = "None"
-            beatmap_count = range_data.get(str(rng), {"beatmap_count": 0})[
-                "beatmap_count"
-            ]
-            scores_count = range_data.get(str(rng), {"scores_count": 0})["scores_count"]
-        else:
-            if not type == "grade_breakdown":
-                beatmap_count = await check_beatmaps(ctx, di.copy())
-            di["-user"] = user_id
-            scores_count = (
-                await get_beatmap_list(
-                    ctx,
-                    di,
-                    ["scores", "fc_count", "ss_count"],
-                    False,
-                    None,
-                    False,
-                    True,
+    if type not in ("mod_breakdown"):
+        for rng in ranges:
+            completion = 100
+            di[range_arg] = str(rng).lower()
+            if type not in ("grade", "grade_breakdown"):
+                if rng == "null":
+                    rng = "None"
+                beatmap_count = range_data.get(str(rng), {"beatmap_count": 0})[
+                    "beatmap_count"
+                ]
+                scores_count = range_data.get(str(rng), {"scores_count": 0})["scores_count"]
+            else:
+                if not type == "grade_breakdown":
+                    beatmap_count = await check_beatmaps(ctx, di.copy())
+                di["-user"] = user_id
+                scores_count = (
+                    await get_beatmap_list(
+                        ctx,
+                        di,
+                        ["scores", "fc_count", "ss_count"],
+                        False,
+                        None,
+                        False,
+                        True,
+                    )
+                    or 0
                 )
-                or 0
+            print(scores_count)
+            if int(beatmap_count) > 0:
+                completion = int(scores_count) / int(beatmap_count) * 100
+
+            if type == "length":
+                start, end = map(int, rng.split("-"))
+                start_minutes, start_seconds = divmod(start, 60)
+                end_minutes, end_seconds = divmod(end, 60)
+
+                start_time = f"{start_minutes:02d}:{start_seconds:02d}"
+                end_time = f"{end_minutes:02d}:{end_seconds:02d}"
+
+                rng = f"{start_time}-{end_time}"
+            elif type == "artist" or type == "title":
+                rng = rng.replace("%", "")
+                # replace "[A-Za-z]%" with a hashtag
+                if rng == "None":
+                    rng = "#"
+            elif not type == "stars" and rng == "10-11":
+                rng = "10+"
+            elif type == "stars":
+                if rng == "10-999":
+                    rng = "10★+"
+                else:
+                    start, end = rng.split("-")
+                    rng = f"{start}-{end}★"
+            elif type == "combo":
+                if rng == "1000-99999":
+                    rng = "1000x+"
+                else:
+                    start, end = rng.split("-")
+                    rng = f"{start}-{end}x"
+            elif type == "monthly":
+                rng = calendar.month_abbr[rng]
+            elif type == "objects":
+                if rng == "1000-99999":
+                    rng = "1000+"
+
+            completion_percent = (
+                f"{completion:06.3f}" if completion < 100 else f"{completion:,.2f}"
             )
-        print(scores_count)
-        if int(beatmap_count) > 0:
-            completion = int(scores_count) / int(beatmap_count) * 100
-
-        if type == "length":
-            start, end = map(int, rng.split("-"))
-            start_minutes, start_seconds = divmod(start, 60)
-            end_minutes, end_seconds = divmod(end, 60)
-
-            start_time = f"{start_minutes:02d}:{start_seconds:02d}"
-            end_time = f"{end_minutes:02d}:{end_seconds:02d}"
-
-            rng = f"{start_time}-{end_time}"
-        elif type == "artist" or type == "title":
-            rng = rng.replace("%", "")
-            # replace "[A-Za-z]%" with a hashtag
-            if rng == "None":
-                rng = "#"
-        elif not type == "stars" and rng == "10-11":
-            rng = "10+"
-        elif type == "stars":
-            if rng == "10-999":
-                rng = "10★+"
-            else:
-                start, end = rng.split("-")
-                rng = f"{start}-{end}★"
-        elif type == "combo":
-            if rng == "1000-99999":
-                rng = "1000x+"
-            else:
-                start, end = rng.split("-")
-                rng = f"{start}-{end}x"
-        elif type == "monthly":
-            rng = calendar.month_abbr[rng]
-        elif type == "objects":
-            if rng == "1000-99999":
-                rng = "1000+"
-
-        completion_percent = (
-            f"{completion:06.3f}" if completion < 100 else f"{completion:,.2f}"
+            if di.get("-o") == "score" or di.get("-o") == "nomodscore":
+                scores_count = f"{scores_count:,}"
+                beatmap_count = f"{beatmap_count:,}"
+            description += (
+                f"{prefix}{rng} | {completion_percent}% | {scores_count}/{beatmap_count}\n"
+            )
+    else:
+        di["-groupby"] = ",enabled_mods"
+        query = f"""
+            SELECT
+                enabled_mods,
+                COUNT(DISTINCT beatmaps.beatmap_id) AS beatmap_count
+            FROM beatmaps
+            LEFT JOIN scores ON scores.beatmap_id = beatmaps.beatmap_id AND scores.user_id = {user_id}
+            LEFT JOIN top_score ON top_score.beatmap_id = beatmaps.beatmap_id
+            {build_where_clause(di, "scores")}
+            GROUP BY enabled_mods
+            ORDER BY beatmap_count DESC
+        """
+        mod_rows = await db.execute_query(query)
+        widest_mod_string = max(
+            [len(get_mods_string(mod_row["enabled_mods"])) for mod_row in mod_rows]
         )
-        if di.get("-o") == "score" or di.get("-o") == "nomodscore":
-            scores_count = f"{scores_count:,}"
-            beatmap_count = f"{beatmap_count:,}"
-        description += (
-            f"{prefix}{rng} | {completion_percent}% | {scores_count}/{beatmap_count}\n"
-        )
+        length = di["-l"] if "-l" in di else 10
+        # convert length to int if it's a string
+        length = int(length) if isinstance(length, str) else length
+        length_size = len(str(length))
+        for mod_row in mod_rows[:length]:
+            rank = mod_rows.index(mod_row)
+            mod_str = get_mods_string(mod_row["enabled_mods"])
+            append_spaces_mod_str = widest_mod_string - len(mod_str)
+            append_spaces_rank = length_size - len(str(rank + 1))
+
+            description += (
+                f"#{rank + 1}{' ' * append_spaces_rank} | {mod_str}{' ' * append_spaces_mod_str} | {mod_row['beatmap_count']}\n"
+            )
+
     description += "```"
     query_end_time = time.time()
     query_execution_time = round(query_end_time - query_start_time, 2)
