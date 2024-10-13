@@ -241,7 +241,10 @@ async def check_array_stats(ctx, operation, table, aggregate, di, title=None):
 
 
 async def check_tables(ctx, operation, table, di, embedtitle=None):
-    base = f"select scores.user_id, {operation} as stat from {table} \
+    base_groupby = ""
+    if di.get("-groupby"):
+        base_groupby = di["-groupby"] + " as grouping"
+    base = f"select scores.user_id, {operation} as stat {base_groupby} from {table} \
             inner join users2 on {table}.user_id = users2.user_id \
             inner join beatmaps on {table}.beatmap_id = beatmaps.beatmap_id"
 
@@ -1666,8 +1669,11 @@ async def build_leaderboard(ctx, base, di, user=None):
             if len(res) > 0:
                 user = str(res[0][0]).lower()
 
+    group_base = ""
+    if di.get("-groupby"):
+        group_base = f", grouping"
     rank = f"""
-        SELECT user_id, stat, ROW_NUMBER() OVER(ORDER BY stat {direction}) as rank
+        SELECT user_id, stat, ROW_NUMBER() OVER(ORDER BY stat {direction}) as rank{group_base}
         FROM ({base}) base
     """
 
@@ -1676,7 +1682,7 @@ async def build_leaderboard(ctx, base, di, user=None):
             WITH leaderboard AS (
                 {rank}
             )
-            SELECT rank, username, stat
+            SELECT rank, username, stat{group_base}
             FROM leaderboard
             INNER JOIN users2 ON users2.user_id = leaderboard.user_id
             WHERE rank <= {int(limit) * int(page)}
@@ -1690,7 +1696,7 @@ async def build_leaderboard(ctx, base, di, user=None):
             WITH leaderboard AS (
                 {rank}
             )
-            SELECT rank, username, stat
+            SELECT rank, username, stat{group_base}
             FROM leaderboard
             INNER JOIN users2 ON users2.user_id = leaderboard.user_id
             ORDER BY rank

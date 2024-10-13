@@ -1,6 +1,8 @@
 import datetime
 import discord
-
+from utils.helpers import (
+    get_mods_string,
+)
 
 def format_td(seconds, digits=3):
     isec, fsec = divmod(round(seconds * 10**digits), 10**digits)
@@ -63,7 +65,27 @@ def format_leaderboard(rows, di=""):
         ):
             fixed_number += "%"
 
-        s = s + "#" + fixed_rank + " | " + fixed_user + " | " + fixed_number + "\n"
+        s = s + "#" + fixed_rank + " | " + fixed_user + " | "
+        if di.__contains__("-groupby"):
+            s = s + "{0:<7}".format(fixed_number)
+            fixed_group = "{0:<15}".format(str(row[3]))
+            # if contains "date_trunc" in the groupby, format the date to smallest possible unit
+            if "date_trunc" in di["-groupby"]:
+                # format is depending on the date_trunc unit (day, month, year, etc.)
+                # if the date_trunc unit is "day", format the date to "YYYY-MM-DD"
+                if "day" in di["-groupby"]:
+                    fixed_group = row[3].strftime("%Y-%m-%d")
+                elif "month" in di["-groupby"]:
+                    # show as "January 2021" instead of "2021-01"
+                    fixed_group = row[3].strftime("%Y %B")
+                elif "year" in di["-groupby"]:
+                    fixed_group = row[3].strftime("%Y")
+            elif "enabled_mods" in di["-groupby"]:
+                fixed_group = get_mods_string(row[3])
+            s = s + " | " + fixed_group
+        else:
+            s = s + fixed_number
+        s = s + "\n"
 
     if s == "```pascal\n":
         s += "No result\n"
