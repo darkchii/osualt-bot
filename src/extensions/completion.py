@@ -57,7 +57,7 @@ class Completion(commands.Cog):
         kwargs = get_args(args)
         await get_completion(ctx, "grade_breakdown", kwargs)
     
-    @commands.command()
+    @commands.command(aliases=["modb", "mb"])
     async def mod_breakdown(self, ctx, *args):
         """Mod Breakdown board for a single user"""
         kwargs = get_args(args)
