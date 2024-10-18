@@ -258,6 +258,10 @@ def build_where_clause(di, table=None):
                 + " and stars < "
                 + str(max_range_value)
             )
+    if di.get("-video") and str(di["-video"]) == "true":
+        where += " and beatmaps.video = 1"
+    if di.get("-storyboard") and str(di["-storyboard"]) == "true":
+        where += " and beatmaps.storyboard = 1"
     if di.get("-time"):
         where += " and days >= " + str(di["-time"])
     if di.get("-month") and not (di.get("-year") or di.get("-y")):
