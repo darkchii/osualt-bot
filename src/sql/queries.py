@@ -1433,20 +1433,28 @@ async def get_completion(ctx, type, di):
             )
     else:
         di["-groupby"] = ",enabled_mods"
+    
         query = f"""
             SELECT
-                enabled_mods,
+                CASE 
+                    WHEN (CAST(enabled_mods AS integer) & 512) = 512 
+                        AND (CAST(enabled_mods AS integer) & 64) = 0 
+                    THEN CAST(enabled_mods AS integer) + 64
+                    ELSE CAST(enabled_mods AS integer)
+                END AS updated_enabled_mods,
                 COUNT(DISTINCT beatmaps.beatmap_id) AS beatmap_count
             FROM beatmaps
             LEFT JOIN scores ON scores.beatmap_id = beatmaps.beatmap_id AND scores.user_id = {user_id}
             LEFT JOIN top_score ON top_score.beatmap_id = beatmaps.beatmap_id
             {build_where_clause(di, "scores")}
-            GROUP BY enabled_mods
+            GROUP BY updated_enabled_mods
             ORDER BY beatmap_count DESC
         """
+
         mod_rows = await db.execute_query(query)
+
         widest_mod_string = max(
-            [len(get_mods_string(mod_row["enabled_mods"])) for mod_row in mod_rows]
+            [len(get_mods_string(mod_row["updated_enabled_mods"])) for mod_row in mod_rows]
         )
         length = di["-l"] if "-l" in di else 10
         # convert length to int if it's a string
@@ -1454,7 +1462,7 @@ async def get_completion(ctx, type, di):
         length_size = len(str(length))
         for mod_row in mod_rows[:length]:
             rank = mod_rows.index(mod_row)
-            mod_str = get_mods_string(mod_row["enabled_mods"])
+            mod_str = get_mods_string(mod_row["updated_enabled_mods"])
             append_spaces_mod_str = widest_mod_string - len(mod_str)
             append_spaces_rank = length_size - len(str(rank + 1))
 
