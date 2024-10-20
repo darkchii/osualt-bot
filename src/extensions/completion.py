@@ -49,6 +49,18 @@ class Completion(commands.Cog):
         kwargs = get_args(args)
         await get_completion(ctx, "grade", kwargs)
 
+    @commands.command()
+    async def genre_completion(self, ctx, *args):
+        """Genre completion board for a single user"""
+        kwargs = get_args(args)
+        await get_completion(ctx, "genre", kwargs)
+
+    @commands.command()
+    async def language_completion(self, ctx, *args):
+        """Language completion board for a single user"""
+        kwargs = get_args(args)
+        await get_completion(ctx, "language", kwargs)
+
     @commands.command(
         aliases=["rank_breakdown", "letter_breakdown", "letters", "ranks", "grades"]
     )

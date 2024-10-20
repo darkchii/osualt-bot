@@ -1206,6 +1206,50 @@ async def get_completion(ctx, type, di):
         title = "Grade Completion"
         range_arg = "-letters"
         prefix = ""
+    elif type == "genre":
+        title = "Genre Completion"
+        # ranges = [0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14]
+        ranges = ["0", "1", "2", "3", "4", "5", "6", "7", "9", "10", "11", "12", "13", "14"]
+        ranges_alt = [
+            "Any",
+            "Unspecified",
+            "Video Game",
+            "Anime",
+            "Rock",
+            "Pop",
+            "Other",
+            "Novelty",
+            "Hip Hop",
+            "Electronic",
+            "Metal",
+            "Classical",
+            "Folk",
+            "Jazz",
+        ]
+        range_arg = "genre"
+        prefix = ""
+    elif type == "language":
+        title = "Language Completion"
+        ranges = ["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14"]
+        ranges_alt = [
+            "Any",
+            "Unspecified",
+            "English",
+            "Japanese",
+            "Chinese",
+            "Instrumental",
+            "Korean",
+            "French",
+            "German",
+            "Swedish",
+            "Spanish",
+            "Italian",
+            "Russian",
+            "Polish",
+            "Other",
+        ]
+        range_arg = "language"
+        prefix = ""
     elif type == "artist":
         title = "Artist Completion"
         ranges = ['null', "A%", "B%", "C%", "D%", "E%", "F%", "G%", "H%", "I%", "J%", "K%", "L%", "M%", "N%", "O%", "P%", "Q%", "R%", "S%", "T%", "U%", "V%", "W%", "X%", "Y%", "Z%"]
@@ -1308,7 +1352,7 @@ async def get_completion(ctx, type, di):
 
         range_conditions = []
         for rng in ranges:
-            if type in ("yearly", "monthly", "daily"):
+            if type in ("yearly", "monthly", "daily", "genre", "language"):
                 range_conditions.append(f"WHEN {range_arg} = {rng} THEN '{rng}'")
             elif type in ("artist", "title"):
                 range_conditions.append( f"WHEN {range_arg} ILIKE '{rng}' THEN '{rng}'" )
@@ -1358,7 +1402,9 @@ async def get_completion(ctx, type, di):
 
     description = "```pascal\n"
     if type not in ("mod_breakdown"):
-        for rng in ranges:
+        for i in range(len(ranges)):
+            rng = ranges[i]
+            rng_len = None
             completion = 100
             di[range_arg] = str(rng).lower()
             if type not in ("grade", "grade_breakdown"):
@@ -1421,6 +1467,17 @@ async def get_completion(ctx, type, di):
             elif type == "objects":
                 if rng == "1000-99999":
                     rng = "1000+"
+            
+            #if ranges_alt is set, use that instead of the range
+            if type == "genre" or type == "language":
+                rng = ranges_alt[i]
+            if type == "genre":
+                rng_len = 11
+            if type == "language":
+                rng_len = 12
+
+            if rng_len != None:
+                rng = rng.ljust(rng_len)
 
             completion_percent = (
                 f"{completion:06.3f}" if completion < 100 else f"{completion:,.2f}"
