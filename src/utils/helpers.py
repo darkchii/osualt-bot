@@ -258,6 +258,16 @@ def build_where_clause(di, table=None):
                 + " and stars < "
                 + str(max_range_value)
             )
+    if di.get("-download_unavailable"):
+        if str(di["-download_unavailable"]) == "true":
+            where += " and beatmaps.download_unavailable = 1"
+        else:
+            where += " and beatmaps.download_unavailable = 0"
+    if di.get("-audio_unavailable"):
+        if str(di["-audio_unavailable"]) == "true":
+            where += " and beatmaps.audio_unavailable = 1"
+        else:
+            where += " and beatmaps.audio_unavailable = 0"
     if di.get("-video"):
         if str(di["-video"]) == "true":
             where += " and beatmaps.video = 1"
