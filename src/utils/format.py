@@ -1,5 +1,6 @@
 import datetime
 import discord
+from prettytable import PrettyTable
 from utils.helpers import (
     get_mods_string,
 )
@@ -8,13 +9,24 @@ def format_td(seconds, digits=3):
     isec, fsec = divmod(round(seconds * 10**digits), 10**digits)
     return f"{datetime.timedelta(seconds=isec)}.{fsec:0{digits}.0f}"
 
+def get_table():
+    table = PrettyTable()
+    table.border = False
+    table.preserve_internal_border = True
+    table.header = False
+    table.align = "l"
+    return table
 
 def format_leaderboard(rows, di=""):
+    table = get_table()
+
     embed = discord.Embed(colour=discord.Colour(0xCC5288))
-    s = "```pascal\n"
+    # s = "```pascal\n"
     for row in rows:
-        fixed_user = "{0:<15}".format(str(row[1]))
-        fixed_rank = "{0:<3}".format(str(row[0]))
+        # fixed_user = "{0:<15}".format(str(row[1]))
+        # fixed_rank = "{0:<3}".format(str(row[0]))
+        fixed_user = str(row[1])
+        fixed_rank = str(row[0])
         if row[2] == None:
             fixed_number = "0"
         elif isinstance(row[2], datetime.datetime):
@@ -65,10 +77,12 @@ def format_leaderboard(rows, di=""):
         ):
             fixed_number += "%"
 
-        s = s + "#" + fixed_rank + " | " + fixed_user + " | "
+        table_row = ["#" + fixed_rank, fixed_user]
+        # s = s + "#" + fixed_rank + " | " + fixed_user + " | "
         if di.__contains__("-groupby"):
-            s = s + "{0:<7}".format(fixed_number)
-            fixed_group = "{0:<15}".format(str(row[3]))
+            # s = s + "{0:<7}".format(fixed_number)
+            table_row = table_row + [fixed_number]
+            fixed_group = format(str(row[3]))
             # if contains "date_trunc" in the groupby, format the date to smallest possible unit
             if "date_trunc" in di["-groupby"]:
                 # format is depending on the date_trunc unit (day, month, year, etc.)
@@ -82,14 +96,22 @@ def format_leaderboard(rows, di=""):
                     fixed_group = row[3].strftime("%Y")
             elif "enabled_mods" in di["-groupby"]:
                 fixed_group = get_mods_string(row[3])
-            s = s + " | " + fixed_group
+            # s = s + " | " + fixed_group
+            table_row = table_row[:3] + [fixed_group]
         else:
-            s = s + fixed_number
-        s = s + "\n"
+            table_row = table_row[:3] + [fixed_number]
+        # s = s + "\n"
+        table.add_row(table_row)
 
-    if s == "```pascal\n":
+    # if no table rows
+    s = "```pascal\n"
+    if table.rowcount == 0:
         s += "No result\n"
-    embed.description = s + "```"
+    else:
+        s += table.get_string()
+    s += "```"
+
+    embed.description = s
 
     return embed
 

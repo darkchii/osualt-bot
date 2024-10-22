@@ -25,6 +25,12 @@ class Completion(commands.Cog):
         kwargs = get_args(args)
         await get_completion(ctx, "od", kwargs)
 
+    @commands.command(aliases=["hc", "hpc"])
+    async def hp_completion(self, ctx, *args):
+        """HP completion board for a single user"""
+        kwargs = get_args(args)
+        await get_completion(ctx, "hp", kwargs)
+
     @commands.command(aliases=["star_completion", "sr_complation", "sc"])
     async def stars_completion(self, ctx, *args):
         """Stars completion board for a single user"""

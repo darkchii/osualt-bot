@@ -11,7 +11,7 @@ from utils.helpers import (
     get_mods_string,
     normalize_year,
 )
-from utils.format import format_leaderboard, format_footer
+from utils.format import get_table, format_leaderboard, format_footer
 
 db = Database()
 
@@ -1090,6 +1090,8 @@ async def get_beatmap_ids(di, tables=None):
 
 
 async def get_completion(ctx, type, di):
+    table = get_table()
+
     user_id = await get_user_id(ctx, di)
     username = await get_username(user_id)
 
@@ -1139,6 +1141,10 @@ async def get_completion(ctx, type, di):
         title = "CS Completion"
         range_arg = "cs"
         prefix = "CS "
+    elif type == "hp":
+        title = "HP Completion"
+        range_arg = "hp"
+        prefix = "HP "
     elif type == "stars":
         if "-modded" in di:
             del di["-modded"]
@@ -1400,11 +1406,9 @@ async def get_completion(ctx, type, di):
             }
         print(range_data)
 
-    description = "```pascal\n"
     if type not in ("mod_breakdown"):
         for i in range(len(ranges)):
             rng = ranges[i]
-            rng_len = None
             completion = 100
             di[range_arg] = str(rng).lower()
             if type not in ("grade", "grade_breakdown"):
@@ -1471,13 +1475,6 @@ async def get_completion(ctx, type, di):
             #if ranges_alt is set, use that instead of the range
             if type == "genre" or type == "language":
                 rng = ranges_alt[i]
-            if type == "genre":
-                rng_len = 11
-            if type == "language":
-                rng_len = 12
-
-            if rng_len != None:
-                rng = rng.ljust(rng_len)
 
             completion_percent = (
                 f"{completion:06.3f}" if completion < 100 else f"{completion:,.2f}"
@@ -1485,9 +1482,10 @@ async def get_completion(ctx, type, di):
             if di.get("-o") == "score" or di.get("-o") == "nomodscore":
                 scores_count = f"{scores_count:,}"
                 beatmap_count = f"{beatmap_count:,}"
-            description += (
-                f"{prefix}{rng} | {completion_percent}% | {scores_count}/{beatmap_count}\n"
-            )
+            # description += (
+            #     f"{prefix}{rng} | {completion_percent}% | {scores_count}/{beatmap_count}\n"
+            # )
+            table.add_row([f"{prefix}{rng}", f"{completion_percent}%", f"{scores_count}/{beatmap_count}"])
     else:
         di["-groupby"] = ",enabled_mods"
     
@@ -1509,24 +1507,20 @@ async def get_completion(ctx, type, di):
         """
 
         mod_rows = await db.execute_query(query)
-
-        widest_mod_string = max(
-            [len(get_mods_string(mod_row["updated_enabled_mods"])) for mod_row in mod_rows]
-        )
         length = di["-l"] if "-l" in di else 10
         # convert length to int if it's a string
         length = int(length) if isinstance(length, str) else length
-        length_size = len(str(length))
         for mod_row in mod_rows[:length]:
             rank = mod_rows.index(mod_row)
             mod_str = get_mods_string(mod_row["updated_enabled_mods"])
-            append_spaces_mod_str = widest_mod_string - len(mod_str)
-            append_spaces_rank = length_size - len(str(rank + 1))
 
-            description += (
-                f"#{rank + 1}{' ' * append_spaces_rank} | {mod_str}{' ' * append_spaces_mod_str} | {mod_row['beatmap_count']}\n"
-            )
+            table.add_row([f"#{rank + 1}", mod_str, mod_row["beatmap_count"]])
+            # description += (
+            #     f"#{rank + 1}{' ' * append_spaces_rank} | {mod_str}{' ' * append_spaces_mod_str} | {mod_row['beatmap_count']}\n"
+            # )
 
+    description = "```pascal\n"
+    description += table.get_string()
     description += "```"
     query_end_time = time.time()
     query_execution_time = round(query_end_time - query_start_time, 2)
