@@ -1536,6 +1536,104 @@ async def get_completion(ctx, type, di):
     )
     await ctx.reply(embed=embed)
 
+async def get_score_view(ctx, operation, di):
+    user_id = None
+    username = None
+
+    select = f"*, scores.pp as pp, users2.pp as user_pp"
+
+    base = f"SELECT {select} FROM scores \
+        inner join users2 on scores.user_id = users2.user_id \
+        inner join beatmaps on scores.beatmap_id = beatmaps.beatmap_id"
+    
+    if di.get("-o") and di["-o"] == "lazerscore":
+        base = base + " inner join mods on scores.enabled_mods = mods.enum"
+
+    base = base + " inner join moddedsr on beatmaps.beatmap_id = moddedsr.beatmap_id"
+
+    direction = "desc"
+
+    if di.get("-direction") or di.get("-dir"):
+        if di.get("-dir"):
+            di["-direction"] = di["-dir"]
+        direction = di["-direction"]
+
+    base = base + build_where_clause(di)
+    # if operation == "scores.pp":
+    #     base += " AND scores.pp IS NOT NULL"
+
+    if di.get("-user") or di.get("-u"):
+        user_id = await get_user_id(ctx, di)
+        username = await get_username(user_id)
+        base = base + f" AND (scores.user_id = {user_id} OR users2.username = '{username}')"
+
+    base = base + f" ORDER BY {operation} {direction}"
+
+    base = base + " LIMIT 1"
+
+    query = base
+
+    print("QUERY:", query)
+    query_start_time = time.time()
+    res = await db.execute_query(query)
+    if user_id is None:
+        user_id = res[0]["user_id"]
+        username = res[0]["username"]
+    query_end_time = time.time()
+    query_execution_time = round(query_end_time - query_start_time, 2)
+
+    if not res:
+        await ctx.reply("No scores found.")
+        return
+    
+    score = res[0]
+
+    #format to 2 decimal places
+    display_user_pp = f"{score['user_pp']:.2f}pp"
+    #format with commas
+    display_user_rank = f"#{score['global_rank']:,}"
+    display_pp = f"{score['pp']:.2f}pp"
+    display_score = f"{score['score']:,}"
+    display_stars = f"{score['star_rating']:.2f}★"
+    display_aim_diff = f"{score['aim_diff']:.2f}★"
+    display_speed_diff = f"{score['speed_diff']:.2f}★"
+    display_fl_diff = f"{score['fl_diff']:.2f}★"
+    display_slider_factor = f"{score['slider_factor']:.2f}"
+    display_od = f"{score['modded_od']:.2f}"
+    display_ar = f"{score['modded_ar']:.2f}"
+    display_cs = f"{score['modded_cs']:.2f}"
+    display_hp = f"{score['modded_hp']:.2f}"
+    display_speed_note_count = f"{score['speed_note_count']:,}"
+    # use Discord formatting to "time ago" format
+    display_date_played = f"<t:{int(score['date_played'].replace(tzinfo=datetime.timezone.utc).timestamp())}:R>"
+
+    embed = discord.Embed(colour=discord.Colour(0xCC5288))
+    embed.set_author(name=f"\
+        {username or user_id} | {display_user_rank} | {display_user_pp}",
+        icon_url=f"https://a.ppy.sh/{user_id}")
+    # embed.title = f"Score for {username or user_id}"
+    embed.description = f"[{score['artist']} - {score['title']} [{score['diffname']}]](https://osu.ppy.sh/beatmapsets/{score['set_id']}#osu/{score['beatmap_id']}) +{get_mods_string(score['enabled_mods'])} [{display_stars}]"
+    embed.set_thumbnail(url=f"https://b.ppy.sh/thumb/{score['set_id']}l.jpg")
+
+
+    embed.add_field(name=f"\
+            ⦁ {score['rank']} | {display_pp} | {score['accuracy']}% \
+        ", 
+        value=f"\
+        **⦁** {display_score} | {score['combo']}/{score['maxcombo']}x | [{score['count300']}/{score['count100']}/{score['count50']}/{score['countmiss']}]\n \
+        **⦁** Aim: {display_aim_diff} | Speed: {display_speed_diff} | FL: {display_fl_diff} | Slider: {display_slider_factor}\n \
+        **⦁** OD: {display_od} | AR: {display_ar} | CS: {display_cs} | HP: {display_hp} | Speed Notes: {display_speed_note_count}\n \
+        **⦁** Played {display_date_played} \
+        ")
+
+    footer_text = format_footer("scores", query_execution_time, embed.description)
+    embed.set_footer(
+        text=footer_text,
+        icon_url="https://pek.li/maj7qa.png",
+    )
+
+    await ctx.reply(embed=embed)
+
 
 async def get_pack_completion(ctx, di):
     user_id = await get_user_id(ctx, di)

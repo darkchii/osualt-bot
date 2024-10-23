@@ -1,11 +1,30 @@
 from discord.ext import commands
 from utils.helpers import get_args
-from sql.queries import get_beatmap_list
+from sql.queries import get_beatmap_list, get_score_view
 
 
 class Score(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+
+    @commands.command()
+    async def score(self, ctx, *args):
+        """Score"""
+        kwargs = get_args(args)
+        kwargs["-modded"] = "true"
+        
+        operation = "score"
+
+        if not kwargs.get("-o") and kwargs.get("-order"):
+            kwargs["-o"] = kwargs["-order"]
+
+        if kwargs.get("-o"):
+            operation = kwargs.get("-o")
+
+        if operation == "pp":
+            operation = "scores.pp"
+
+        await get_score_view(ctx, operation, kwargs)
 
     @commands.command(aliases=["avgscore"])
     async def averagescore(self, ctx, *args):
