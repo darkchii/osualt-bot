@@ -1485,7 +1485,10 @@ async def get_completion(ctx, type, di):
             # description += (
             #     f"{prefix}{rng} | {completion_percent}% | {scores_count}/{beatmap_count}\n"
             # )
-            table.add_row([f"{prefix}{rng}", f"{completion_percent}%", f"{scores_count}/{beatmap_count}"])
+            missing_scores = int(beatmap_count) - int(scores_count)
+            #append a "-" if missing_scores > 0, otherwise its u'\u2713'
+            missing_scores = "✓" if missing_scores == 0 else f"-{missing_scores}"
+            table.add_row([f"{prefix}{rng}", f"{completion_percent}%", f"{scores_count}/{beatmap_count}", missing_scores])
     else:
         di["-groupby"] = ",enabled_mods"
     
@@ -1610,11 +1613,11 @@ async def get_score_view(ctx, operation, di):
     embed = discord.Embed(colour=discord.Colour(0xCC5288))
     embed.set_author(name=f"\
         {username or user_id} | {display_user_rank} | {display_user_pp}",
+        url=f"https://osu.ppy.sh/users/{user_id}",
         icon_url=f"https://a.ppy.sh/{user_id}")
     # embed.title = f"Score for {username or user_id}"
     embed.description = f"[{score['artist']} - {score['title']} [{score['diffname']}]](https://osu.ppy.sh/beatmapsets/{score['set_id']}#osu/{score['beatmap_id']}) +{get_mods_string(score['enabled_mods'])} [{display_stars}]"
     embed.set_thumbnail(url=f"https://b.ppy.sh/thumb/{score['set_id']}l.jpg")
-
 
     embed.add_field(name=f"\
             ⦁ {score['rank']} | {display_pp} | {score['accuracy']}% \
