@@ -1347,7 +1347,7 @@ async def get_completion(ctx, type, di):
         prefix = ""
         # find the TOP pp score of the user
         beatmap_count = await get_beatmap_list(
-            ctx, di, ["scores", "mods"], False, None, False, True
+            ctx, di, ["scores"], False, None, False, True
         )
         query = f"""
         SELECT pp FROM scores WHERE user_id = {user_id} AND pp IS NOT NULL ORDER BY pp DESC LIMIT 1
