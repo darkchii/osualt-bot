@@ -87,6 +87,12 @@ class Completion(commands.Cog):
         kwargs = get_args(args)
         await get_completion(ctx, "pp", kwargs)
 
+    @commands.command(aliases=["scb"])
+    async def score_breakdown(self, ctx, *args):
+        """Score breakdown for a single user"""
+        kwargs = get_args(args)
+        await get_completion(ctx, "score", kwargs)
+
     @commands.command(aliases=["yc"])
     async def yearly_completion(self, ctx, *args):
         """Yearly completion board for a single user"""

@@ -1353,7 +1353,6 @@ async def get_completion(ctx, type, di):
         SELECT pp FROM scores WHERE user_id = {user_id} AND pp IS NOT NULL ORDER BY pp DESC LIMIT 1
         """
         top_pp = await db.execute_query(query)
-        print("TOP PP:", top_pp)
         if len(top_pp) == 0:
             raise ValueError("No scores found for this user.")
         top_pp = top_pp[0][0]
@@ -1373,10 +1372,43 @@ async def get_completion(ctx, type, di):
             ranges.append(f"{round_rng(i)}-{round_rng(i+group_size)}")
             i += group_size
         print("RANGES:", ranges)
+    elif type == "score":
+        show_missing = False
+        title = "Score Breakdown"
+        range_arg = "score"
+        prefix = ""
+        beatmap_count = await get_beatmap_list(
+            ctx, di, ["scores"], False, None, False, True
+        )
+
+        ranges = [
+            "0-1000000",
+            "1000000-5000000",
+            "5000000-10000000",
+            "10000000-20000000",
+            "20000000-30000000",
+            "30000000-40000000",
+            "40000000-50000000",
+            "50000000-60000000",
+            "60000000-70000000",
+            "70000000-80000000",
+            "80000000-90000000",
+            "90000000-100000000",
+            "100000000-200000000",
+            "200000000-300000000",
+            "300000000-400000000",
+            "400000000-500000000",
+            "500000000-600000000",
+            "600000000-700000000",
+            "700000000-800000000",
+            "800000000-900000000",
+            "900000000-1000000000",
+            "1000000000-999999999999",
+        ]
 
     query_start_time = time.time()
 
-    if type not in ("grade", "grade_breakdown", "mod_breakdown", "pp"):
+    if type not in ("grade", "grade_breakdown", "mod_breakdown", "pp", "score"):
         beatmap_di = di.copy()
         for key in di.keys():
             if key in blacklist:
@@ -1447,7 +1479,7 @@ async def get_completion(ctx, type, di):
             rng = ranges[i]
             completion = 100
             di[range_arg] = str(rng).lower()
-            if type not in ("grade", "grade_breakdown", "pp"):
+            if type not in ("grade", "grade_breakdown", "pp", "score"):
                 if rng == "null":
                     rng = "None"
                 beatmap_count = range_data.get(str(rng), {"beatmap_count": 0})[
@@ -1455,12 +1487,15 @@ async def get_completion(ctx, type, di):
                 ]
                 scores_count = range_data.get(str(rng), {"scores_count": 0})["scores_count"]
             else:
-                if type not in ("grade_breakdown", "pp"):
+                if type not in ("grade_breakdown", "pp", "score"):
                     beatmap_count = await check_beatmaps(ctx, di.copy())
                 di["-user"] = user_id
                 if type in ("pp"):
                     di["-pp-min"] = rng.split("-")[0]
                     di["-pp-max"] = rng.split("-")[1]
+                elif type in ("score"):
+                    di["-score-min"] = rng.split("-")[0]
+                    di["-score-max"] = rng.split("-")[1]
                 scores_count = (
                     await get_beatmap_list(
                         ctx,
@@ -1516,6 +1551,24 @@ async def get_completion(ctx, type, di):
                 start = start[:-2] if start.endswith(".0") else start
                 end = end[:-2] if end.endswith(".0") else end
                 rng = f"{start}-{end}pp"
+            elif type == "score":
+                start, end = rng.split("-")
+                start = int(start)
+                end = int(end)
+                # reformat to millions / billions, no decimals
+                if start < 1000000000:
+                    start = f"{start/1000000:.0f}m"
+                else:
+                    start = f"{start/1000000000:.0f}b"
+                if end < 1000000000:
+                    end = f"{end/1000000:.0f}m"
+                else:
+                    end = f"{end/1000000000:.0f}b"
+
+                if rng == "1000000000-999999999999":
+                    rng = "1b+"
+                else:
+                    rng = f"{start}-{end}"
             
             #if ranges_alt is set, use that instead of the range
             if type == "genre" or type == "language":
