@@ -1101,6 +1101,7 @@ async def get_completion(ctx, type, di):
         )
 
     # Parse args
+    show_missing = True
     default_size = 1
     length = max(int(di.get("-l", 10)), 1)
     group_size = max(float(di.get("-g", default_size)), 0.01)
@@ -1272,6 +1273,7 @@ async def get_completion(ctx, type, di):
         beatmap_count = await get_beatmap_list(
             ctx, di, ["scores", "fc_count", "ss_count"], False, None, False, True
         )
+        show_missing = False
         ranges = ["XH", "SH", "X", "S", "A", "B", "C", "D"]
         title = "Grade Breakdown"
         range_arg = "-letters"
@@ -1280,6 +1282,7 @@ async def get_completion(ctx, type, di):
         beatmap_count = await get_beatmap_list(
             ctx, di, ["scores", "mods"], False, None, False, True
         )
+        show_missing = False
         # works a bit differently (we need to find the unique mods_enabled values, then count them and show the top x)
         title = "Mod Breakdown"
         range_arg = "enabled_mods"
@@ -1337,10 +1340,43 @@ async def get_completion(ctx, type, di):
         title = "Object Completion"
         range_arg = "circles + sliders + spinners"
         prefix = ""
+    elif type == "pp":
+        show_missing = False
+        title = "PP Breakdown"
+        range_arg = "pp"
+        prefix = ""
+        # find the TOP pp score of the user
+        beatmap_count = await get_beatmap_list(
+            ctx, di, ["scores", "mods"], False, None, False, True
+        )
+        query = f"""
+        SELECT pp FROM scores WHERE user_id = {user_id} AND pp IS NOT NULL ORDER BY pp DESC LIMIT 1
+        """
+        top_pp = await db.execute_query(query)
+        print("TOP PP:", top_pp)
+        if len(top_pp) == 0:
+            raise ValueError("No scores found for this user.")
+        top_pp = top_pp[0][0]
+        # generate ranges based on top_pp and -g
+        if di.get("-g"):
+            group_size = float(di.get("-g"))
+        else:
+            group_size = 100
+
+        if group_size < 50:
+            raise ValueError("Group size must be at least 50.")
+
+        ranges = []
+        start = 0
+        i = start
+        while i < top_pp:
+            ranges.append(f"{round_rng(i)}-{round_rng(i+group_size)}")
+            i += group_size
+        print("RANGES:", ranges)
 
     query_start_time = time.time()
 
-    if type not in ("grade", "grade_breakdown", "mod_breakdown"):
+    if type not in ("grade", "grade_breakdown", "mod_breakdown", "pp"):
         beatmap_di = di.copy()
         for key in di.keys():
             if key in blacklist:
@@ -1411,7 +1447,7 @@ async def get_completion(ctx, type, di):
             rng = ranges[i]
             completion = 100
             di[range_arg] = str(rng).lower()
-            if type not in ("grade", "grade_breakdown"):
+            if type not in ("grade", "grade_breakdown", "pp"):
                 if rng == "null":
                     rng = "None"
                 beatmap_count = range_data.get(str(rng), {"beatmap_count": 0})[
@@ -1419,9 +1455,12 @@ async def get_completion(ctx, type, di):
                 ]
                 scores_count = range_data.get(str(rng), {"scores_count": 0})["scores_count"]
             else:
-                if not type == "grade_breakdown":
+                if type not in ("grade_breakdown", "pp"):
                     beatmap_count = await check_beatmaps(ctx, di.copy())
                 di["-user"] = user_id
+                if type in ("pp"):
+                    di["-pp-min"] = rng.split("-")[0]
+                    di["-pp-max"] = rng.split("-")[1]
                 scores_count = (
                     await get_beatmap_list(
                         ctx,
@@ -1471,6 +1510,12 @@ async def get_completion(ctx, type, di):
             elif type == "objects":
                 if rng == "1000-99999":
                     rng = "1000+"
+            elif type == "pp":
+                start, end = rng.split("-")
+                if start != "0":
+                    start = start.rstrip("0").rstrip(".")
+                end = end.rstrip("0").rstrip(".")
+                rng = f"{start}-{end}pp"
             
             #if ranges_alt is set, use that instead of the range
             if type == "genre" or type == "language":
@@ -1479,11 +1524,9 @@ async def get_completion(ctx, type, di):
             completion_percent = (
                 f"{completion:06.3f}" if completion < 100 else f"{completion:,.2f}"
             )
-            # description += (
-            #     f"{prefix}{rng} | {completion_percent}% | {scores_count}/{beatmap_count}\n"
-            # )
-            #append a "-" if missing_scores > 0, otherwise its u'\u2713'
+
             missing_scores = None
+
             if di.get("-o") == "score" or di.get("-o") == "nomodscore":
                 scores_count = f"{scores_count:,}"
                 beatmap_count = f"{beatmap_count:,}"
@@ -1493,7 +1536,7 @@ async def get_completion(ctx, type, di):
 
             _row = [f"{prefix}{rng}", f"{completion_percent}%", f"{scores_count}/{beatmap_count}"]
             #add missing_scores if it exists
-            if missing_scores is not None:
+            if show_missing and missing_scores is not None:
                 _row.append(missing_scores)
 
             table.add_row(_row)
@@ -1650,7 +1693,6 @@ async def get_score_view(ctx, operation, di):
 
     await ctx.reply(embed=embed)
 
-
 async def get_pack_completion(ctx, di):
     table = get_table()
 
@@ -1791,7 +1833,7 @@ async def get_pack_completion(ctx, di):
         icon_url="https://pek.li/maj7qa.png",
     )
     await ctx.reply(embed=embed)
-
+    
 
 async def get_username(user_id):
     query = "SELECT username FROM users2 WHERE user_id = $1"
