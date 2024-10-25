@@ -1512,9 +1512,9 @@ async def get_completion(ctx, type, di):
                     rng = "1000+"
             elif type == "pp":
                 start, end = rng.split("-")
-                if start != "0":
-                    start = start.rstrip("0").rstrip(".")
-                end = end.rstrip("0").rstrip(".")
+                #remove .0 if it ends with it
+                start = start[:-2] if start.endswith(".0") else start
+                end = end[:-2] if end.endswith(".0") else end
                 rng = f"{start}-{end}pp"
             
             #if ranges_alt is set, use that instead of the range
