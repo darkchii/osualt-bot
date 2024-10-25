@@ -1479,16 +1479,24 @@ async def get_completion(ctx, type, di):
             completion_percent = (
                 f"{completion:06.3f}" if completion < 100 else f"{completion:,.2f}"
             )
-            if di.get("-o") == "score" or di.get("-o") == "nomodscore":
-                scores_count = f"{scores_count:,}"
-                beatmap_count = f"{beatmap_count:,}"
             # description += (
             #     f"{prefix}{rng} | {completion_percent}% | {scores_count}/{beatmap_count}\n"
             # )
-            missing_scores = int(beatmap_count) - int(scores_count)
             #append a "-" if missing_scores > 0, otherwise its u'\u2713'
-            missing_scores = "✓" if missing_scores == 0 else f"-{missing_scores}"
-            table.add_row([f"{prefix}{rng}", f"{completion_percent}%", f"{scores_count}/{beatmap_count}", missing_scores])
+            missing_scores = None
+            if di.get("-o") == "score" or di.get("-o") == "nomodscore":
+                scores_count = f"{scores_count:,}"
+                beatmap_count = f"{beatmap_count:,}"
+            else:
+                missing_scores = int(beatmap_count) - int(scores_count)
+                missing_scores = "✓" if missing_scores == 0 else f"-{missing_scores}"
+
+            _row = [f"{prefix}{rng}", f"{completion_percent}%", f"{scores_count}/{beatmap_count}"]
+            #add missing_scores if it exists
+            if missing_scores is not None:
+                _row.append(missing_scores)
+
+            table.add_row(_row)
     else:
         di["-groupby"] = ",enabled_mods"
     
@@ -1574,6 +1582,11 @@ async def get_score_view(ctx, operation, di):
 
     base = base + " LIMIT 1"
 
+    if di.get("-i") or di.get("-index"):
+        if di.get("-i"):
+            di["-index"] = di["-i"]
+        base = base + f" OFFSET {di['-index']}"            
+
     query = base
 
     print("QUERY:", query)
@@ -1639,6 +1652,8 @@ async def get_score_view(ctx, operation, di):
 
 
 async def get_pack_completion(ctx, di):
+    table = get_table()
+
     user_id = await get_user_id(ctx, di)
     username = await get_username(user_id)
     di["-mode"] = "0"
@@ -1713,11 +1728,11 @@ async def get_pack_completion(ctx, di):
             "beatmap_count": row["beatmap_count"],
         }
 
-    description = "```pascal\n"
     for packs in packs_ranges:
         completion = 100
         beatmap_count = 0
         scores_count = 0
+        missing_count = 0
         if "-" in packs:
             pack_start, pack_end = map(int, packs.split("-"))
             for pack in range(pack_start, pack_end + 1):
@@ -1741,15 +1756,26 @@ async def get_pack_completion(ctx, di):
         if int(beatmap_count) > 0:
             completion = int(scores_count) / int(beatmap_count) * 100
 
+        missing_count = int(beatmap_count) - int(scores_count)
+        missing_count = "✓" if missing_count == 0 else f"-{missing_count}"
+
         completion_percent = (
             f"{completion:06.3f}" if completion < 100 else f"{completion:,.2f}"
         )
         if di.get("-o") == "score" or di.get("-o") == "nomodscore":
             scores_count = f"{scores_count:,}"
             beatmap_count = f"{beatmap_count:,}"
-        description += (
-            f"{packs} | {completion_percent}% | {scores_count}/{beatmap_count}\n"
-        )
+            missing_count = None
+        # description += (
+        #     f"{packs} | {completion_percent}% | {scores_count}/{beatmap_count}\n"
+        # )
+        _row = [packs, f"{completion_percent}%", f"{scores_count}/{beatmap_count}"]
+        if missing_count is not None:
+            _row.append(missing_count)
+        table.add_row(_row)
+
+    description = "```pascal\n"
+    description += table.get_string()
     description += "```"
     query_end_time = time.time()
     query_execution_time = round(query_end_time - query_start_time, 2)
