@@ -179,6 +179,8 @@ class Advanced(commands.Cog):
                 )
 
             elif kwargs["-o"] == "length":
+                if not kwargs.get("-formattime"):
+                    kwargs["-formattime"] = "true"
                 if kwargs.get("-modded") == "true":
                     await check_tables(
                         ctx,

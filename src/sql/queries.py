@@ -244,7 +244,10 @@ async def check_tables(ctx, operation, table, di, embedtitle=None):
     base_groupby = ""
     if di.get("-groupby"):
         base_groupby = di["-groupby"] + " as grouping"
-    base = f"select scores.user_id, {operation} as stat {base_groupby} from {table} \
+        
+    base = f"select scores.user_id, \
+            {operation} as stat {base_groupby} \
+            from {table} \
             inner join users2 on {table}.user_id = users2.user_id \
             inner join beatmaps on {table}.beatmap_id = beatmaps.beatmap_id"
 
@@ -1954,7 +1957,10 @@ async def build_leaderboard(ctx, base, di, user=None):
     if di.get("-groupby"):
         group_base = f", grouping"
     rank = f"""
-        SELECT user_id, stat, ROW_NUMBER() OVER(ORDER BY stat {direction}) as rank{group_base}
+        SELECT user_id, 
+        stat, 
+        ROW_NUMBER() OVER(ORDER BY stat {direction}) as rank{group_base},
+        stat - LEAD(stat, 1) OVER(ORDER BY stat) as stat_diff
         FROM ({base}) base
     """
 
@@ -1963,7 +1969,17 @@ async def build_leaderboard(ctx, base, di, user=None):
             WITH leaderboard AS (
                 {rank}
             )
-            SELECT rank, username, stat{group_base}
+            SELECT 
+                rank, 
+                username, 
+                stat,
+                stat_diff,
+                CASE 
+                    WHEN rank < {offset} THEN 1
+                    WHEN rank > {int(limit) * int(page)} THEN 2
+                    ELSE 0
+                END as out_of_bounds
+                {group_base}
             FROM leaderboard
             INNER JOIN users2 ON users2.user_id = leaderboard.user_id
             WHERE rank <= {int(limit) * int(page)}
@@ -1977,7 +1993,13 @@ async def build_leaderboard(ctx, base, di, user=None):
             WITH leaderboard AS (
                 {rank}
             )
-            SELECT rank, username, stat{group_base}
+            SELECT 
+                rank, 
+                username, 
+                stat,
+                stat_diff,
+                0 as out_of_bounds
+                {group_base}
             FROM leaderboard
             INNER JOIN users2 ON users2.user_id = leaderboard.user_id
             ORDER BY rank
