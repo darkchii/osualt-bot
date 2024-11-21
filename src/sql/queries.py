@@ -249,8 +249,10 @@ async def check_tables(ctx, operation, table, di, embedtitle=None):
             {operation} as stat {base_groupby} \
             from {table} \
             inner join users2 on {table}.user_id = users2.user_id \
-            inner join beatmaps on {table}.beatmap_id = beatmaps.beatmap_id"
+            inner join beatmaps on {table}.beatmap_id = beatmaps.beatmap_id \
+            left join scoresmods on {table}.beatmap_id = scoresmods.beatmap_id and {table}.user_id = scoresmods.user_id and {table}.date_played = scoresmods.date_played"
 
+    print("base: ", base)
     if (
         di.get("-pack")
         or di.get("-pack-min")

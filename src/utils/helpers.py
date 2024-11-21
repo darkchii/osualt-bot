@@ -18,6 +18,12 @@ def catbox_upload(file_name, file_path):
 
 unique_tables = ["unique_ss", "unique_fc", "unique_dt_fc", "first_ss", "first_fc"]
 
+mods_enum_banned = [
+    "RX",
+    "AP",
+    "AT"
+]
+
 mods_enum = {
     "": 0,
     "NF": 1,
@@ -364,6 +370,19 @@ def build_where_clause(di, table=None):
             + " and beatmaps.beatmap_id < "
             + range[1]
         )
+    if di.get("-late"):
+        #debug output
+        print("di[-late]: " + str(di["-late"]))
+        #filter to date_played on the same exact day as approved_date + late days, not earlier or later
+        #so if -late = 0, only show scores played on the same day as the map was ranked, time doesn't matter, the day does
+        where += " and date_played >= beatmaps.approved_date + interval '" + str(di["-late"]) + " days' and date_played < beatmaps.approved_date + interval '" + str(int(di["-late"])+1) + " days'"
+    if di.get("-late-min"):
+        where += " and date_played >= beatmaps.approved_date + interval '" + str(di["-late-min"]) + " days'"
+    if di.get("-late-max"):
+        where += " and date_played < beatmaps.approved_date + interval '" + str(int(di["-late-max"])+1) + " days'"
+    if di.get("-late-range"):
+        range = str(di["-late-range"]).split("-")
+        where += " and date_played >= beatmaps.approved_date + interval '" + str(range[0]) + " days' and date_played < beatmaps.approved_date + interval '" + str(int(range[1])+1) + " days'"
     if di.get("-mode") or di.get("-mode") == 0:
         where += " and mode = " + str(di["-mode"])
     if di.get("-approved") or di.get("-a"):
@@ -437,13 +456,44 @@ def build_where_clause(di, table=None):
             di["-mods"] = di["-m"]
         if di.get("-notscorestable") and di["-notscorestable"] == "true":
             where += (
-                " and moddedsr.mods_enum = '"
-                + str(get_mods_enum(di["-mods"].upper(), True))
-                + "'"
+                " and (moddedsr.mods_enum = '" + str(get_mods_enum(di["-mods"].upper(), True)) + "')"
             )
         else:
+            di["-mods"] = di["-mods"].replace(",", "")
+            di["-mods"] = di["-mods"].upper()
+            split_mods = wrap(di["-mods"], 2)
+            # order split_mods alphabetically
+            split_mods.sort()
+            # if any of the mods are NOT in mods_enum array, we will NOT use the enabled_mods column
+            use_enum = True
+            for mod in split_mods:
+                if mod.upper() in mods_enum_banned or mod.upper() not in mods_enum:
+                    use_enum = False
+                    break
+
+            mod_check = "exact"
+            if di.get("-mod-check"):
+                mod_check = di["-mod-check"]
+
+            legacy_mod_query = ""
+            lazer_mod_query = ""
+                
+
+            if(use_enum):
+                legacy_mod_query = "enabled_mods = '" + str(get_mods_enum(di["-mods"].upper())) + "' or "
+            # example lazer mod value: [{"acronym": "HR"}, {"acronym": "HD"}, {"acronym": "ST"}, {"acronym": "AC", "settings": {"minimum_accuracy": 0.95}}, {"acronym": "RX"}]
+            if mod_check == "exact":
+                lazer_mod_query = "((SELECT ARRAY_AGG(mod->>'acronym' ORDER BY mod->>'acronym') FROM jsonb_array_elements(scoresmods.mods) AS mod) = ARRAY['" + "','".join(split_mods) + "'] and jsonb_array_length(scoresmods.mods) = " + str(len(split_mods)) + ")"
+            elif mod_check == "includes":
+                lazer_mod_query = "(SELECT COUNT(DISTINCT mod->>'acronym') FROM jsonb_array_elements(scoresmods.mods) AS mod WHERE mod->>'acronym' IN ('" + "','".join(split_mods) + "')) = " + str(len(split_mods))
+            elif mod_check == "any":
+                lazer_mod_query = "(SELECT COUNT(DISTINCT mod->>'acronym') FROM jsonb_array_elements(scoresmods.mods) AS mod WHERE mod->>'acronym' IN ('" + "','".join(split_mods) + "')) > 0 "
+
             where += (
-                " and enabled_mods = '" + str(get_mods_enum(di["-mods"].upper())) + "'"
+                " and ("+
+                legacy_mod_query +
+                lazer_mod_query +
+                ")"
             )
     if di.get("-is"):
         mod_list = wrap(di["-is"], 2)
