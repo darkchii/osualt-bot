@@ -245,12 +245,28 @@ async def check_tables(ctx, operation, table, di, embedtitle=None):
     if di.get("-groupby"):
         base_groupby = di["-groupby"] + " as grouping"
         
-    base = f"select scores.user_id, \
+    base = f"\
+            WITH mods_with_acronyms AS ( \
+			    SELECT \
+			        scoresmods.beatmap_id, \
+			        scoresmods.user_id, \
+			        scoresmods.date_played, \
+			        STRING_AGG(DISTINCT elem->>'acronym', '') AS unique_acronyms \
+			    FROM \
+			        scoresmods \
+			        LEFT JOIN LATERAL jsonb_array_elements(scoresmods.mods) AS elem ON true \
+			    GROUP BY \
+			        scoresmods.beatmap_id, \
+			        scoresmods.user_id, \
+			        scoresmods.date_played \
+			) \
+            select scores.user_id, \
             {operation} as stat {base_groupby} \
             from {table} \
             inner join users2 on {table}.user_id = users2.user_id \
             inner join beatmaps on {table}.beatmap_id = beatmaps.beatmap_id \
-            left join scoresmods on {table}.beatmap_id = scoresmods.beatmap_id and {table}.user_id = scoresmods.user_id and {table}.date_played = scoresmods.date_played"
+            left join scoresmods on {table}.beatmap_id = scoresmods.beatmap_id and {table}.user_id = scoresmods.user_id and {table}.date_played = scoresmods.date_played \
+            left join mods_with_acronyms on {table}.beatmap_id = mods_with_acronyms.beatmap_id and {table}.user_id = mods_with_acronyms.user_id and {table}.date_played = mods_with_acronyms.date_played"
 
     print("base: ", base)
     if (
