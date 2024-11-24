@@ -338,18 +338,18 @@ def build_where_clause(di, table=None):
         )
     if di.get("-played-start"):
         where += (
-            " and date_played >= '" + check_date_string(str(di["-played-start"])) + "'"
+            " and scores.date_played >= '" + check_date_string(str(di["-played-start"])) + "'"
         )
     if di.get("-played-end"):
         where += (
-            " and date_played < '" + check_date_string(str(di["-played-end"])) + "'"
+            " and scores.date_played < '" + check_date_string(str(di["-played-end"])) + "'"
         )
     if di.get("-played-date"):
         where += (
-            " and date_played >= '"
+            " and scores.date_played >= '"
             + check_date_string(str(di["-played-date"]))
             + " 00:00:00"
-            + "' and date_played <= '"
+            + "' and scores.date_played <= '"
             + check_date_string(str(di["-played-date"]))
             + " 23:59:59"
             + "'"
@@ -375,14 +375,14 @@ def build_where_clause(di, table=None):
         print("di[-late]: " + str(di["-late"]))
         #filter to date_played on the same exact day as approved_date + late days, not earlier or later
         #so if -late = 0, only show scores played on the same day as the map was ranked, time doesn't matter, the day does
-        where += " and date_played >= beatmaps.approved_date + interval '" + str(di["-late"]) + " days' and date_played < beatmaps.approved_date + interval '" + str(int(di["-late"])+1) + " days'"
+        where += " and scores.date_played >= beatmaps.approved_date + interval '" + str(di["-late"]) + " days' and scores.date_played < beatmaps.approved_date + interval '" + str(int(di["-late"])+1) + " days'"
     if di.get("-late-min"):
-        where += " and date_played >= beatmaps.approved_date + interval '" + str(di["-late-min"]) + " days'"
+        where += " and scores.date_played >= beatmaps.approved_date + interval '" + str(di["-late-min"]) + " days'"
     if di.get("-late-max"):
-        where += " and date_played < beatmaps.approved_date + interval '" + str(int(di["-late-max"])+1) + " days'"
+        where += " and scores.date_played < beatmaps.approved_date + interval '" + str(int(di["-late-max"])+1) + " days'"
     if di.get("-late-range"):
         range = str(di["-late-range"]).split("-")
-        where += " and date_played >= beatmaps.approved_date + interval '" + str(range[0]) + " days' and date_played < beatmaps.approved_date + interval '" + str(int(range[1])+1) + " days'"
+        where += " and scores.date_played >= beatmaps.approved_date + interval '" + str(range[0]) + " days' and scores.date_played < beatmaps.approved_date + interval '" + str(int(range[1])+1) + " days'"
     if di.get("-mode") or di.get("-mode") == 0:
         where += " and mode = " + str(di["-mode"])
     if di.get("-approved") or di.get("-a"):
