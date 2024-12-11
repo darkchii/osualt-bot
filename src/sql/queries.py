@@ -700,7 +700,7 @@ async def get_beatmap_list(
         if di["-order"] == "approved_date":
             di["-order"] = "beatmaps.approved_date"
         if di["-order"] == "mods":
-            di["-order"] = "enabled_mods"
+            di["-order"] = "mods_with_acronyms.unique_acronyms"
         if di["-order"] == "agedscore":
             if not di.get("-direction") or di.get("-dir"):
                 di["-direction"] = "desc"
@@ -762,7 +762,26 @@ async def get_beatmap_list(
         di["-user"] = user_id
         di["-u"] = user_id
 
-    count_query = "select count(beatmaps.beatmap_id)"
+    count_query = ""
+
+    if "scoresmods" in tables:
+        count_query = f"\
+            WITH mods_with_acronyms AS ( \
+			    SELECT \
+			        scoresmods.beatmap_id, \
+			        scoresmods.user_id, \
+			        scoresmods.date_played, \
+			        STRING_AGG(DISTINCT elem->>'acronym', '') AS unique_acronyms \
+			    FROM \
+			        scoresmods \
+			        LEFT JOIN LATERAL jsonb_array_elements(scoresmods.mods) AS elem ON true \
+			    GROUP BY \
+			        scoresmods.beatmap_id, \
+			        scoresmods.user_id, \
+			        scoresmods.date_played \
+			)"
+
+    count_query = count_query + "select count(beatmaps.beatmap_id)"
     if sets:
         count_query = "select count(distinct beatmaps.set_id)"
     elif returnCount and (di.get("-o") == "score" or di.get("-o") == "nomodscore"):
@@ -771,14 +790,11 @@ async def get_beatmap_list(
     count_query = count_query + " from beatmaps"
     if tables != None:
         for table in tables:
-            if table == "mods":
+            if table == "scoresmods":
                 count_query = (
                     count_query
-                    + " inner join "
-                    + table
-                    + " on scores.enabled_mods = "
-                    + table
-                    + ".enum"
+                    + " inner join scoresmods on beatmaps.beatmap_id = scoresmods.beatmap_id and scores.user_id = scoresmods.user_id and scores.date_played = scoresmods.date_played"
+                    + " left join mods_with_acronyms on beatmaps.beatmap_id = mods_with_acronyms.beatmap_id and scores.user_id = mods_with_acronyms.user_id and scores.date_played = mods_with_acronyms.date_played"
                 )
             else:
                 count_query = (
@@ -850,7 +866,27 @@ async def get_beatmap_list(
     if returnCount == True:
         return count
 
-    query = "select set_id, beatmaps.beatmap_id, artist, title, diffname, stars"
+    query = ""
+    # if tables contains scoresmods
+    if "scoresmods" in tables:
+        query = f"\
+            WITH mods_with_acronyms AS ( \
+			    SELECT \
+			        scoresmods.beatmap_id, \
+			        scoresmods.user_id, \
+			        scoresmods.date_played, \
+			        STRING_AGG(DISTINCT elem->>'acronym', '') AS unique_acronyms \
+			    FROM \
+			        scoresmods \
+			        LEFT JOIN LATERAL jsonb_array_elements(scoresmods.mods) AS elem ON true \
+			    GROUP BY \
+			        scoresmods.beatmap_id, \
+			        scoresmods.user_id, \
+			        scoresmods.date_played \
+			)"
+
+    query = query + f"\
+        select set_id, beatmaps.beatmap_id, artist, title, diffname, stars"
 
     if di.get("-modded") and di["-modded"] == "true":
         query = "select set_id, beatmaps.beatmap_id, artist, title, diffname, moddedsr.star_rating::numeric as stars"
@@ -864,14 +900,11 @@ async def get_beatmap_list(
     query = query + " from beatmaps"
     if tables != None:
         for table in tables:
-            if table == "mods":
+            if table == "scoresmods":
                 query = (
                     query
-                    + " inner join "
-                    + table
-                    + " on scores.enabled_mods = "
-                    + table
-                    + ".enum"
+                    + " inner join scoresmods on beatmaps.beatmap_id = scoresmods.beatmap_id and scores.user_id = scoresmods.user_id and scores.date_played = scoresmods.date_played"
+                    + " left join mods_with_acronyms on beatmaps.beatmap_id = mods_with_acronyms.beatmap_id and scores.user_id = mods_with_acronyms.user_id and scores.date_played = mods_with_acronyms.date_played"
                 )
             else:
                 query = query + " inner join " + table + " using (beatmap_id)"

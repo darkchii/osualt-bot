@@ -561,7 +561,7 @@ def build_where_clause(di, table=None):
         elif di.get("-rank") or di.get("-nolist"):
             where += " and scores.user_id = '" + str(di["-user"]) + "'"
         else:
-            where += " and user_id = '" + str(di["-user"]) + "'"
+            where += " and scores.user_id = '" + str(di["-user"]) + "'"
     if di.get("-country") or di.get("-c"):
         countries = di.get("-country") or di.get("-c")
         countries = countries.replace("'", "")

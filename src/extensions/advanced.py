@@ -37,8 +37,8 @@ class Advanced(commands.Cog):
             tables.append("fc_count")
         if kwargs.get("-order") == "ss_count":
             tables.append("ss_count")
-        if kwargs.get("-order") == "mods":
-            tables.append("mods")
+        if kwargs.get("-order") == "mods" or kwargs.get("-mods") or kwargs.get("-m"):
+            tables.append("scoresmods")
 
         sets = kwargs.get("-o") == "sets"
 
