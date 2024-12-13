@@ -688,7 +688,7 @@ async def get_beatmap_list(
     limit = 10
     page = 1
     order = "stars"
-    direction = "desc"
+    direction = "asc"
     unique_table = None
 
     user_id = await get_user_id(ctx, di)
@@ -1631,7 +1631,7 @@ async def get_completion(ctx, type, di):
             table.add_row(_row)
     else:
         di["-groupby"] = ",mods_with_acronyms.unique_acronyms"
-        direction = "asc"
+        direction = "desc"
 
         if di.get("-direction") or di.get("-dir"):
             if di.get("-dir"):
