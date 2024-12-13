@@ -19,7 +19,7 @@ allowed_mentions = discord.AllowedMentions(
     replied_user=True,  # Whether to ping on replies to messages
 )
 bot = commands.Bot(
-    command_prefix="!",
+    command_prefix="?",
     case_insensitive=True,
     intents=intents,
     allowed_mentions=allowed_mentions,
