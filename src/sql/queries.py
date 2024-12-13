@@ -702,7 +702,7 @@ async def get_beatmap_list(
         if di["-order"] == "approved_date":
             di["-order"] = "beatmaps.approved_date"
         if di["-order"] == "mods":
-            di["-order"] = "mods_with_acronyms.unique_acronyms"
+            di["-order"] = "length(mods_with_acronyms.unique_acronyms)"
         if di["-order"] == "agedscore":
             if not di.get("-direction") or di.get("-dir"):
                 di["-direction"] = "desc"
@@ -1631,6 +1631,13 @@ async def get_completion(ctx, type, di):
             table.add_row(_row)
     else:
         di["-groupby"] = ",mods_with_acronyms.unique_acronyms"
+        direction = "asc"
+
+        if di.get("-direction") or di.get("-dir"):
+            if di.get("-dir"):
+                di["-direction"] = di["-dir"]
+            direction = di["-direction"]
+
     
         query = f"""
             {mod_acronym_query} 
@@ -1643,7 +1650,7 @@ async def get_completion(ctx, type, di):
             INNER JOIN mods_with_acronyms ON mods_with_acronyms.beatmap_id = beatmaps.beatmap_id
             {build_where_clause(di, "scores")}
             GROUP BY updated_enabled_mods
-            ORDER BY beatmap_count DESC
+            ORDER BY beatmap_count {direction}
         """
 
         mod_rows = await db.execute_query(query)
