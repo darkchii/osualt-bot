@@ -688,7 +688,7 @@ async def get_beatmap_list(
     limit = 10
     page = 1
     order = "stars"
-    direction = "asc"
+    direction = "desc"
     unique_table = None
 
     user_id = await get_user_id(ctx, di)
