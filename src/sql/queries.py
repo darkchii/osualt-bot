@@ -103,6 +103,21 @@ blacklist = [
     "-c",
 ]
 
+mod_acronym_query = f"\
+    WITH mods_with_acronyms AS ( \
+        SELECT \
+            scoresmods.beatmap_id, \
+            scoresmods.user_id, \
+            scoresmods.date_played, \
+            STRING_AGG(DISTINCT elem->>'acronym', '') AS unique_acronyms \
+        FROM \
+            scoresmods \
+            LEFT JOIN LATERAL jsonb_array_elements(scoresmods.mods) AS elem ON true \
+        GROUP BY \
+            scoresmods.beatmap_id, \
+            scoresmods.user_id, \
+            scoresmods.date_played \
+    )"
 
 async def register_user(user_id):
     query = "INSERT INTO priorityuser VALUES ($1) ON CONFLICT DO NOTHING"
@@ -246,20 +261,7 @@ async def check_tables(ctx, operation, table, di, embedtitle=None):
         base_groupby = di["-groupby"] + " as grouping"
         
     base = f"\
-            WITH mods_with_acronyms AS ( \
-			    SELECT \
-			        scoresmods.beatmap_id, \
-			        scoresmods.user_id, \
-			        scoresmods.date_played, \
-			        STRING_AGG(DISTINCT elem->>'acronym', '') AS unique_acronyms \
-			    FROM \
-			        scoresmods \
-			        LEFT JOIN LATERAL jsonb_array_elements(scoresmods.mods) AS elem ON true \
-			    GROUP BY \
-			        scoresmods.beatmap_id, \
-			        scoresmods.user_id, \
-			        scoresmods.date_played \
-			) \
+            {mod_acronym_query} \
             select scores.user_id, \
             {operation} as stat {base_groupby} \
             from {table} \
@@ -766,20 +768,7 @@ async def get_beatmap_list(
 
     if "scoresmods" in tables:
         count_query = f"\
-            WITH mods_with_acronyms AS ( \
-			    SELECT \
-			        scoresmods.beatmap_id, \
-			        scoresmods.user_id, \
-			        scoresmods.date_played, \
-			        STRING_AGG(DISTINCT elem->>'acronym', '') AS unique_acronyms \
-			    FROM \
-			        scoresmods \
-			        LEFT JOIN LATERAL jsonb_array_elements(scoresmods.mods) AS elem ON true \
-			    GROUP BY \
-			        scoresmods.beatmap_id, \
-			        scoresmods.user_id, \
-			        scoresmods.date_played \
-			)"
+            {mod_acronym_query}"
 
     count_query = count_query + "select count(beatmaps.beatmap_id)"
     if sets:
@@ -870,20 +859,7 @@ async def get_beatmap_list(
     # if tables contains scoresmods
     if "scoresmods" in tables:
         query = f"\
-            WITH mods_with_acronyms AS ( \
-			    SELECT \
-			        scoresmods.beatmap_id, \
-			        scoresmods.user_id, \
-			        scoresmods.date_played, \
-			        STRING_AGG(DISTINCT elem->>'acronym', '') AS unique_acronyms \
-			    FROM \
-			        scoresmods \
-			        LEFT JOIN LATERAL jsonb_array_elements(scoresmods.mods) AS elem ON true \
-			    GROUP BY \
-			        scoresmods.beatmap_id, \
-			        scoresmods.user_id, \
-			        scoresmods.date_played \
-			)"
+            {mod_acronym_query}"
 
     query = query + f"\
         select set_id, beatmaps.beatmap_id, artist, title, diffname, stars"
@@ -1340,12 +1316,12 @@ async def get_completion(ctx, type, di):
         prefix = ""
     elif type == "mod_breakdown":
         beatmap_count = await get_beatmap_list(
-            ctx, di, ["scores", "mods"], False, None, False, True
+            ctx, di, ["scores", "scoresmods"], False, None, False, True
         )
         show_missing = False
         # works a bit differently (we need to find the unique mods_enabled values, then count them and show the top x)
         title = "Mod Breakdown"
-        range_arg = "enabled_mods"
+        range_arg = "mods_with_acronyms.unique_acronyms"
         prefix = ""
     elif type == "yearly":
         ranges = range(2007, datetime.datetime.now().year + 1)
@@ -1654,20 +1630,17 @@ async def get_completion(ctx, type, di):
 
             table.add_row(_row)
     else:
-        di["-groupby"] = ",enabled_mods"
+        di["-groupby"] = ",mods_with_acronyms.unique_acronyms"
     
         query = f"""
+            {mod_acronym_query} 
             SELECT
-                CASE 
-                    WHEN (CAST(enabled_mods AS integer) & 512) = 512 
-                        AND (CAST(enabled_mods AS integer) & 64) = 0 
-                    THEN CAST(enabled_mods AS integer) + 64
-                    ELSE CAST(enabled_mods AS integer)
-                END AS updated_enabled_mods,
-                COUNT(DISTINCT beatmaps.beatmap_id) AS beatmap_count
+                COUNT(DISTINCT beatmaps.beatmap_id) AS beatmap_count,
+                mods_with_acronyms.unique_acronyms AS updated_enabled_mods
             FROM beatmaps
             LEFT JOIN scores ON scores.beatmap_id = beatmaps.beatmap_id AND scores.user_id = {user_id}
             LEFT JOIN top_score ON top_score.beatmap_id = beatmaps.beatmap_id
+            INNER JOIN mods_with_acronyms ON mods_with_acronyms.beatmap_id = beatmaps.beatmap_id
             {build_where_clause(di, "scores")}
             GROUP BY updated_enabled_mods
             ORDER BY beatmap_count DESC
@@ -1679,7 +1652,7 @@ async def get_completion(ctx, type, di):
         length = int(length) if isinstance(length, str) else length
         for mod_row in mod_rows[:length]:
             rank = mod_rows.index(mod_row)
-            mod_str = get_mods_string(mod_row["updated_enabled_mods"])
+            mod_str = mod_row["updated_enabled_mods"]
 
             table.add_row([f"#{rank + 1}", mod_str, mod_row["beatmap_count"]])
             # description += (
