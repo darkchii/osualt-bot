@@ -49,6 +49,12 @@ class Completion(commands.Cog):
         kwargs = get_args(args)
         await get_completion(ctx, "length", kwargs)
 
+    @commands.command()
+    async def drain_completion(self, ctx, *args):
+        """Drain length completion board for a single user"""
+        kwargs = get_args(args)
+        await get_completion(ctx, "drain", kwargs)
+
     @commands.command(aliases=["rank_completion", "letter_completion", "gc", "rc"])
     async def grade_completion(self, ctx, *args):
         """Grade completion board for a single user"""

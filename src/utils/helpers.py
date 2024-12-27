@@ -955,6 +955,13 @@ def build_where_clause(di, table=None):
     if di.get("-length-range"):
         range = str(di["-length-range"]).split("-")
         where += " and length >= " + range[0] + " and length < " + range[1]
+    if di.get("-drain-max"):
+        where += " and drain < " + str(di["-drain-max"])
+    if di.get("-drain-min"):
+        where += " and drain >= " + str(di["-drain-min"])
+    if di.get("-drain-range"):
+        range = str(di["-drain-range"]).split("-")
+        where += " and drain >= " + range[0] + " and drain < " + range[1]
     if di.get("-maxcombo"):
         where += " and maxcombo = " + str(di["-maxcombo"])
     if di.get("-maxcombo-max"):

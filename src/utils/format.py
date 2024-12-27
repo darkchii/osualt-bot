@@ -23,7 +23,7 @@ def format_leaderboard_value(value, di=""):
     if isinstance(value, datetime.datetime):
         return str(value)
     if di.__contains__("-o") and (
-        di["-o"] == "completion" or di["-o"] == "%" or di["-o"] == "length_completion"
+        di["-o"] == "completion" or di["-o"] == "%" or di["-o"] == "length_completion" or di["-o"] == "drain_completion"
     ):
         return str(value) + "%"
     if di.__contains__("-formattime") and di["-formattime"] == "true":

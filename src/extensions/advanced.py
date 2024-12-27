@@ -178,6 +178,21 @@ class Advanced(commands.Cog):
                     "Length Completion",
                 )
 
+            elif kwargs["-o"] == "drain_completion":
+                kwargs["-noformat"] = True
+                kwargs_copy = kwargs.copy()
+                kwargs_copy["-notscorestable"] = "true"
+                beatmap_length = str(int(await check_beatmaps(ctx, kwargs_copy)))
+                await check_tables(
+                    ctx,
+                    "round((cast(sum(beatmaps.drain) * 100::float / "
+                    + beatmap_length
+                    + " as numeric)), 3)",
+                    "scores",
+                    kwargs,
+                    "Drain Length Completion",
+                )
+
             elif kwargs["-o"] == "length":
                 if not kwargs.get("-formattime"):
                     kwargs["-formattime"] = "true"

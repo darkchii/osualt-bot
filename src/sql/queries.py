@@ -440,6 +440,8 @@ async def check_beatmaps(ctx, di, tables=None, sets=False):
     if di.get("-o"):
         if di["-o"] == "length" or di["-o"] == "length_completion":
             operation = "sum(length)"
+        if di["-o"] == "drain" or di["-o"] == "drain_completion":
+            operation = "sum(drain)"
         if di["-o"] == "score":
             operation = "sum(top_score)"
         if di["-o"] == "nomodscore":
@@ -1152,7 +1154,7 @@ async def get_completion(ctx, type, di):
             int(rounded)
             if ".0" in str(rounded)
             and (not "-g" in di and not "-l" in di)
-            or (type == "combo" or type == "length" or type == "objects")
+            or (type == "combo" or type == "length" or type == "drain" or type == "objects")
             else rounded
         )
         return rounded
@@ -1222,7 +1224,7 @@ async def get_completion(ctx, type, di):
         title = "Combo Completion"
         range_arg = "maxcombo"
         prefix = ""
-    elif type == "length":
+    elif type == "length" or type == "drain":
         if "-modded" in di:
             del di["-modded"]
         if not "-g" in di and not "-l" in di:
@@ -1239,8 +1241,12 @@ async def get_completion(ctx, type, di):
                 "540-600",
                 "600-5999",
             ]
-        title = "Length Completion"
-        range_arg = "length"
+        # title = "Length Completion"
+        # use type for title, capitalize first letter
+        title = type.capitalize() + " Completion"
+        # range_arg = "length"
+        # use type
+        range_arg = type
         prefix = ""
     elif type == "grade":
         if "-modded" in di:
@@ -1548,7 +1554,7 @@ async def get_completion(ctx, type, di):
             if int(beatmap_count) > 0:
                 completion = int(scores_count) / int(beatmap_count) * 100
 
-            if type == "length":
+            if type == "length" or type == "drain":
                 start, end = map(int, rng.split("-"))
                 start_minutes, start_seconds = divmod(start, 60)
                 end_minutes, end_seconds = divmod(end, 60)
