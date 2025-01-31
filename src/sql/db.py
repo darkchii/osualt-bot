@@ -19,7 +19,7 @@ class Database:
                 max_size=10,
                 max_queries=50000,
                 max_inactive_connection_lifetime=300,
-                command_timeout=120,
+                command_timeout=300,
             )
 
         return self.pool
