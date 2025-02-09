@@ -66,9 +66,9 @@ async def on_command_error(ctx, error):
     await ctx.reply(embed=embed)
 
 
-@bot.event
-async def on_command_completion(ctx):
-    await updatelists(bot)
+# @bot.event
+# async def on_command_completion(ctx):
+#     await updatelists(bot)
 
 
 bot.run(DISCORD_TOKEN)
