@@ -768,9 +768,11 @@ async def get_beatmap_list(
 
     count_query = ""
 
-    if "scoresmods" in tables:
-        count_query = f"\
-            {mod_acronym_query}"
+    # if not NoneType
+    if tables != None:
+        if di.get("-notscorestable") != "true" and "scoresmods" in tables:
+            count_query = f"\
+                {mod_acronym_query}"
 
     count_query = count_query + "select count(beatmaps.beatmap_id)"
     if sets:
@@ -859,9 +861,10 @@ async def get_beatmap_list(
 
     query = ""
     # if tables contains scoresmods
-    if "scoresmods" in tables:
-        query = f"\
-            {mod_acronym_query}"
+    if tables != None:
+        if "scoresmods" in tables and di.get("-notscorestable") != "true":
+            query = f"\
+                {mod_acronym_query}"
 
     query = query + f"\
         select set_id, beatmaps.beatmap_id, artist, title, diffname, stars"

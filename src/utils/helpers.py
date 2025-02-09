@@ -1040,6 +1040,8 @@ def build_where_clause(di, table=None):
         )
     if di.get("-genre"):
         where += " and genre = " + str(di["-genre"])
+    if di.get("-md5"):
+        where += " and file_md5 = '" + str(di["-md5"]) + "'"
     if di.get("-language"):
         lang = str(di["-language"])
         if lang.isnumeric():
