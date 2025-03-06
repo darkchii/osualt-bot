@@ -1478,7 +1478,7 @@ async def get_completion(ctx, type, di):
             else:
                 start, end = str(rng).split("-")
                 range_conditions.append(
-                    f"WHEN {range_arg} >= {decimal.Decimal(start) - decimal.Decimal('0.005') if type == 'stars' else start} AND {range_arg} < {decimal.Decimal(end) - decimal.Decimal('0.005') if type == 'stars' else end} THEN '{rng}'"
+                    f"WHEN {range_arg} >= {decimal.Decimal(start) if type == 'stars' else start} AND {range_arg} < {decimal.Decimal(end) if type == 'stars' else end} THEN '{rng}'"
                 )
 
         query += "\n".join(range_conditions)
