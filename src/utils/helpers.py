@@ -235,21 +235,21 @@ def build_where_clause(di, table=None):
         else:
             where += " and scores.user_id in (select user_id from priorityuser)"
     if di.get("-min"):
-        min_value = decimal.Decimal(di["-min"]) - decimal.Decimal("0.005")
+        min_value = decimal.Decimal(di["-min"])
         if di.get("-modded") and di["-modded"] == "true":
             where += " and moddedsr.star_rating::numeric >= " + str(min_value)
         else:
             where += " and stars >= " + str(min_value)
     if di.get("-max"):
-        max_value = decimal.Decimal(di["-max"]) - decimal.Decimal("0.005")
+        max_value = decimal.Decimal(di["-max"])
         if di.get("-modded") and di["-modded"] == "true":
             where += " and moddedsr.star_rating::numeric < " + str(max_value)
         else:
             where += " and stars < " + str(max_value)
     if di.get("-range"):
         range_values = str(di["-range"]).split("-")
-        min_range_value = decimal.Decimal(range_values[0]) - decimal.Decimal("0.005")
-        max_range_value = decimal.Decimal(range_values[1]) - decimal.Decimal("0.005")
+        min_range_value = decimal.Decimal(range_values[0])
+        max_range_value = decimal.Decimal(range_values[1])
         if di.get("-modded") and di["-modded"] == "true":
             where += (
                 " and moddedsr.star_rating::numeric >= "
