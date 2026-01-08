@@ -25,6 +25,10 @@ class Weather(commands.Cog):
             # round values to 2 decimal places
             temp_c = round(data['temperature_c'], 2)
             temp_f = round(data['temperature_f'], 2)
+            temp_c_hi = round(data['temperature_c_high'], 1) if data['temperature_c_high'] is not None else None
+            temp_f_hi = round(data['temperature_f_high'], 1) if data['temperature_f_high'] is not None else None
+            temp_c_low = round(data['temperature_c_low'], 1) if data['temperature_c_low'] is not None else None
+            temp_f_low = round(data['temperature_f_low'], 1) if data['temperature_f_low'] is not None else None
             heat_index_c = round(data['heat_index_c'], 2) if data['heat_index_c'] is not None else None
             heat_index_f = round(data['heat_index_f'], 2) if data['heat_index_f'] is not None else None
             wind_kmh = round(data['wind_speed_kmh'], 1)
@@ -39,7 +43,11 @@ class Weather(commands.Cog):
                 title=f"Weather in {data['location']} at {local_time} {country_flag}",
                 color=0xa8327f,
             )
-            embed.add_field(name="Conditions", value=f"**{data['description']}** at **{temp_c}°C** / **{temp_f}°F**", inline=False)
+            conditions = f"__**{data['description']}** at **{temp_c}°C** / **{temp_f}°F**__"
+            if( temp_c_hi is not None and temp_c_low is not None and temp_f_hi is not None and temp_f_low is not None):
+                conditions += f"\nHigh: **{temp_c_hi}°C** / **{temp_f_hi}°F**, Low: **{temp_c_low}°C** / **{temp_f_low}°F**"
+            # embed.add_field(name="Conditions", value=f"**{data['description']}** at **{temp_c}°C** / **{temp_f}°F**", inline=False)
+            embed.add_field(name="Conditions", value=conditions, inline=False)
             embed.add_field(name="Feels Like", value= f"**{heat_index_c}°C**, **{heat_index_f}°F**" if heat_index_c is not None else "N/A", inline=True )
             embed.add_field(name="Humidity", value=f"{data['humidity']}%", inline=True)
             embed.add_field(name="Wind", value=f"**{wind_kmh} km/h**, **{wind_mph} mph** from **{data['wind_direction']}**", inline=False)

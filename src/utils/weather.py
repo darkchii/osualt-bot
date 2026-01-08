@@ -121,6 +121,8 @@ def getAlertTagsEmoji(tag):
 def convertToBetterWeatherObject(name, weather, air_quality, country_code):
     # Log to console for now
     temp_c = weather.get("current", {}).get("temp")
+    temp_c_hi = weather.get("daily", [{}])[0].get("temp", {}).get("max")
+    temp_c_low = weather.get("daily", [{}])[0].get("temp", {}).get("min")
     wind_speed_kmh = weather.get("current", {}).get("wind_speed") * 3.6  # Convert m/s to km/h
     wind_speed_mph = weather.get("current", {}).get("wind_speed") * 2.23694  # Convert m/s to mph
     real_feel_c = weather.get("current", {}).get("feels_like")
@@ -135,6 +137,10 @@ def convertToBetterWeatherObject(name, weather, air_quality, country_code):
         "location": name,
         "temperature_c": temp_c,
         "temperature_f": convertCelsiusToFahrenheit(temp_c) if temp_c is not None else None,
+        "temperature_c_high": temp_c_hi,
+        "temperature_f_high": convertCelsiusToFahrenheit(temp_c_hi) if temp_c_hi is not None else None,
+        "temperature_c_low": temp_c_low,
+        "temperature_f_low": convertCelsiusToFahrenheit(temp_c_low) if temp_c_low is not None else None,
         "humidity": weather.get("current", {}).get("humidity"),
         "pressure": weather.get("current", {}).get("pressure"),
         "wind_speed": weather.get("current", {}).get("wind_speed"),
@@ -186,7 +192,7 @@ async def getLatLong(location):
 async def getWeatherData(location):
     key = os.getenv("OPENWEATHERMAP_API_KEY")
     lat, lon, name, country_code, state = await getLatLong(location)
-    url_weather = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly,daily&appid={key}&units=metric"
+    url_weather = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly&appid={key}&units=metric"
     url_air_quality = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={key}"
     data_weather = await getApiResponse(url_weather)
     data_air_quality = await getApiResponse(url_air_quality)
