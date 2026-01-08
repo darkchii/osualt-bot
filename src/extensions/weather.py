@@ -46,6 +46,13 @@ class Weather(commands.Cog):
             embed.add_field(name="Air Quality", value=air_quality_str, inline=True)
             embed.add_field(name="Pressure", value=f"{data['pressure']} hPa", inline=True)
 
+            if data['alerts']:
+                alert_messages = []
+                for alert in data['alerts']:
+                    # show times using discords time formatting (in x hours)
+                    alert_messages.append(f"{alert.get('emoji', '')} **{alert['event']}** from <t:{alert['start']}:R> to <t:{alert['end']}:R>")
+                embed.add_field(name="Alerts", value="\n".join(alert_messages), inline=False)
+
             if data['icon']:
                 embed.set_thumbnail(
                     url=f"https://openweathermap.org/img/wn/{data['icon']}@2x.png"

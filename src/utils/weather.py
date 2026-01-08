@@ -112,36 +112,50 @@ def getAirQualityComponentLabel(component):
     }
     return labels.get(component, component.upper())
 
-def convertToBetterWeatherObject(name, weather, air_quality):
+def getAlertTagsEmoji(tag):
+    """Get an emoji representing the alert tag."""
+    if tag == 'Snow/Ice':
+        return "❄️"
+    return "⚠️"
+
+def convertToBetterWeatherObject(name, weather, air_quality, country_code):
+    # Log to console for now
+    temp_c = weather.get("current", {}).get("temp")
+    wind_speed_kmh = weather.get("current", {}).get("wind_speed") * 3.6  # Convert m/s to km/h
+    wind_speed_mph = weather.get("current", {}).get("wind_speed") * 2.23694  # Convert m/s to mph
+    real_feel_c = weather.get("current", {}).get("feels_like")
     """Convert raw weather data to a more usable format."""
-    temp_c = weather.get("main", {}).get("temp")
-    wind_speed_kmh = weather.get("wind", {}).get("speed") * 3.6  # Convert m/s to km/h
-    wind_speed_mph = weather.get("wind", {}).get("speed") * 2.23694  # Convert m/s to mph
-    real_feel_c = calculateRealFeel(temp_c, weather.get("main", {}).get("humidity"), wind_speed_kmh) if temp_c is not None else None
+    alerts = weather.get("alerts", [])
+    #add emojis to alerts
+    for alert in alerts:
+        tag = alert['tags'][0] if 'tags' in alert and len(alert['tags']) > 0 else None
+        print(tag)
+        alert['emoji'] = getAlertTagsEmoji(tag) if tag else "⚠️"
     return {
         "location": name,
         "temperature_c": temp_c,
         "temperature_f": convertCelsiusToFahrenheit(temp_c) if temp_c is not None else None,
-        "humidity": weather.get("main", {}).get("humidity"),
-        "pressure": weather.get("main", {}).get("pressure"),
-        "wind_speed": weather.get("wind", {}).get("speed"),
-        "description": weather.get("weather", [{}])[0].get("description"),
-        "icon": weather.get("weather", [{}])[0].get("icon"),
-        "timezone": weather.get("timezone"),
-        "dt": weather.get("dt"),
-        "country_code": weather.get("sys", {}).get("country", "Unknown"),
-        "country_emoji": f":flag_{weather.get('sys', {}).get('country', 'unknown').lower()}:",
-        "air_pressure": weather.get("main", {}).get("pressure"),
+        "humidity": weather.get("current", {}).get("humidity"),
+        "pressure": weather.get("current", {}).get("pressure"),
+        "wind_speed": weather.get("current", {}).get("wind_speed"),
+        "description": weather.get("current", {}).get("weather", [{}])[0].get("description"),
+        "icon": weather.get("current", {}).get("weather", [{}])[0].get("icon"),
+        "timezone": weather.get("timezone_offset"),
+        "dt": weather.get("current", {}).get("dt"),
+        "country_code": country_code,
+        "country_emoji": f":flag_{country_code.lower()}:",
+        "air_pressure": weather.get("current", {}).get("pressure"),
         "heat_index_c": real_feel_c,
         "heat_index_f": convertCelsiusToFahrenheit(real_feel_c) if real_feel_c is not None else None,
-        # "heat_index_f": convertCelsiusToFahrenheit(heat_index_c) if heat_index_c is not None else None,
         "wind_speed_kmh": wind_speed_kmh,
         "wind_speed_mph": wind_speed_mph,
-        "wind_direction": getWindDirectionLabel(weather.get("wind", {}).get("deg")),
+        "wind_direction": getWindDirectionLabel(weather.get("current", {}).get("wind_deg")),
         "air_quality": air_quality.get("list", [{}])[0].get("main", {}).get("aqi"),
         "air_quality_label": getAirQualityLabel(air_quality.get("list", [{}])[0].get("main", {}).get("aqi")),
         "bad_air_quality_components": getBadAirQualityComponents(air_quality.get("list", [{}])[0].get("components", {})),
-        "air_quality_components": {getAirQualityComponentLabel(k): v for k, v in air_quality.get("list", [{}])[0].get("components", {}).items() if v is not None and v > 0}
+        "air_quality_components": {getAirQualityComponentLabel(k): v for k, v in air_quality.get("list", [{}])[0].get("components", {}).items() if v is not None and v > 0},
+        # alerts sorted by start time ascending
+        "alerts": alerts
     }
 
 async def getApiResponse(url):
@@ -157,24 +171,27 @@ async def getLatLong(location):
     key = os.getenv("OPENWEATHERMAP_API_KEY")
     url = f"http://api.openweathermap.org/geo/1.0/direct?q={location}&limit=1&appid={key}"
     data = await getApiResponse(url)
+    print(data)
     if data and len(data) > 0:
         lat = data[0]['lat']
         lon = data[0]['lon']
         name = data[0]['name']
-        return lat, lon, name
+        country_code = data[0]['country']
+        state = data[0]['state'] if 'state' in data[0] else ''
+        return lat, lon, name, country_code, state
     else:
         print(f"Could not find location: {location}")
-        return None, None, None
+        return None, None, None, None, None
 
 async def getWeatherData(location):
     key = os.getenv("OPENWEATHERMAP_API_KEY")
-    lat, lon, name = await getLatLong(location)
-    url_weather = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={key}&units=metric"
+    lat, lon, name, country_code, state = await getLatLong(location)
+    url_weather = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly,daily&appid={key}&units=metric"
     url_air_quality = f"http://api.openweathermap.org/data/2.5/air_pollution?lat={lat}&lon={lon}&appid={key}"
     data_weather = await getApiResponse(url_weather)
     data_air_quality = await getApiResponse(url_air_quality)
     if data_weather:
-        return convertToBetterWeatherObject(name, data_weather, data_air_quality)
+        return convertToBetterWeatherObject(name, data_weather, data_air_quality, country_code)
     else:
         print(f"Could not retrieve weather data for {location}")
         return None
