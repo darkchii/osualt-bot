@@ -131,7 +131,6 @@ def convertToBetterWeatherObject(name, weather, air_quality, country_code):
     #add emojis to alerts
     for alert in alerts:
         tag = alert['tags'][0] if 'tags' in alert and len(alert['tags']) > 0 else None
-        print(tag)
         alert['emoji'] = getAlertTagsEmoji(tag) if tag else "⚠️"
     return {
         "location": name,
@@ -143,6 +142,8 @@ def convertToBetterWeatherObject(name, weather, air_quality, country_code):
         "temperature_f_low": convertCelsiusToFahrenheit(temp_c_low) if temp_c_low is not None else None,
         "humidity": weather.get("current", {}).get("humidity"),
         "pressure": weather.get("current", {}).get("pressure"),
+        "cloud_coverage": weather.get("current", {}).get("clouds"),
+        "visibility": weather.get("current", {}).get("visibility"),
         "wind_speed": weather.get("current", {}).get("wind_speed"),
         "description": weather.get("current", {}).get("weather", [{}])[0].get("description"),
         "icon": weather.get("current", {}).get("weather", [{}])[0].get("icon"),
@@ -164,11 +165,13 @@ def convertToBetterWeatherObject(name, weather, air_quality, country_code):
         "alerts": alerts
     }
 
+# in-memory cache, keep it 30 minutes [unix timestamp: data]
 async def getApiResponse(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as response:
             if response.status == 200:
-                return await response.json()
+                data = await response.json()
+                return data
             else:
                 print(f"Error fetching data from {url}: {response.status}")
                 return None
@@ -177,7 +180,6 @@ async def getLatLong(location):
     key = os.getenv("OPENWEATHERMAP_API_KEY")
     url = f"http://api.openweathermap.org/geo/1.0/direct?q={location}&limit=1&appid={key}"
     data = await getApiResponse(url)
-    print(data)
     if data and len(data) > 0:
         lat = data[0]['lat']
         lon = data[0]['lon']

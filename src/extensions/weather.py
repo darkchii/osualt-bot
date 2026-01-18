@@ -33,6 +33,13 @@ class Weather(commands.Cog):
             heat_index_f = round(data['heat_index_f'], 2) if data['heat_index_f'] is not None else None
             wind_kmh = round(data['wind_speed_kmh'], 1)
             wind_mph = round(data['wind_speed_mph'], 1)
+            cloud_coverage = data['cloud_coverage']
+            visibility = data['visibility']
+            visibility_ft = round(visibility * 3.28084)  # meters to feet
+            #10000+ = 10km, 1000+ = 1km, rest in meters
+            visibility_str_metric = visibility == 10000 and "10+ km" or visibility >= 1000 and f"{visibility//1000} km" or f"{visibility} meters"
+            visibility_str_imperial = visibility_ft >= 32808 and "6+ miles" or visibility_ft >= 5280 and f"{visibility_ft//5280} miles" or f"{visibility_ft} feet"
+            visibility_str = f"{visibility_str_metric} / {visibility_str_imperial}"
 
             air_quality_str = f"{data['air_quality_label']} (AQI: {data['air_quality']})" if data['air_quality'] is not None else "N/A"
             if data['bad_air_quality_components']:
@@ -50,9 +57,11 @@ class Weather(commands.Cog):
             embed.add_field(name="Conditions", value=conditions, inline=False)
             embed.add_field(name="Feels Like", value= f"**{heat_index_c}°C**, **{heat_index_f}°F**" if heat_index_c is not None else "N/A", inline=True )
             embed.add_field(name="Humidity", value=f"{data['humidity']}%", inline=True)
+            embed.add_field(name="Cloud Coverage", value=f"{cloud_coverage}%", inline=True)
             embed.add_field(name="Wind", value=f"**{wind_kmh} km/h**, **{wind_mph} mph** from **{data['wind_direction']}**", inline=False)
             embed.add_field(name="Air Quality", value=air_quality_str, inline=True)
             embed.add_field(name="Pressure", value=f"{data['pressure']} hPa", inline=True)
+            embed.add_field(name="Visibility", value=visibility_str, inline=True)
 
             if data['alerts']:
                 alert_messages = []
