@@ -34,7 +34,8 @@ class Weather(commands.Cog):
             wind_kmh = round(data['wind_speed_kmh'], 1)
             wind_mph = round(data['wind_speed_mph'], 1)
             cloud_coverage = data['cloud_coverage']
-            visibility = data['visibility']
+            # 0 if None
+            visibility = data['visibility'] if data['visibility'] is not None else 0
             visibility_ft = round(visibility * 3.28084)  # meters to feet
             #10000+ = 10km, 1000+ = 1km, rest in meters
             visibility_str_metric = visibility == 10000 and "10+ km" or visibility >= 1000 and f"{visibility//1000} km" or f"{visibility} meters"
